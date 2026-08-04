@@ -3,18 +3,25 @@
    Ванильный ES-модуль, зависимостей нет. Работает и как <script type="module">,
    и через import в сборщике.
 
-     import { lightArc, sparkWash, heatColor, heatWash } from './escx-ui.js';
-     el.innerHTML = lightArc(64, { id: 'global' });
+     <script src="design/escx-ui.js"></script>
+     el.innerHTML = ESCX.lightArc(64, { id: 'global' });
+
+   Обычный <script>, а не ES-модуль — намеренно: модули не работают по file://
+   из-за CORS, а в этом проекте страницы должны открываться двойным кликом,
+   без сервера и сборки. Когда появится сборщик, файл превращается в ES-модуль
+   заменой последней строки на `export { ... }` — тела функций не меняются.
 
    Все функции возвращают строку SVG/CSS, ничего не монтируют сами и не трогают
    DOM — так их одинаково просто использовать из React, Vue и из голого JS.
    ============================================================================ */
+(function (root) {
+'use strict';
 
 const cssVar = name =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 /** Цвет по накалу 0–100. Пять ступеней шкалы из tokens.css. */
-export function heatColor(v){
+function heatColor(v){
   const i = v < 20 ? 0 : v < 40 ? 1 : v < 60 ? 2 : v < 80 ? 3 : 4;
   return cssVar('--t' + i);
 }
@@ -24,7 +31,7 @@ export function heatColor(v){
  * Сила заливки растёт с накалом: строка не раскрашивается, а теплеет.
  * stale=true (покрытие данных ниже порога) гасит подсветку полностью.
  */
-export function heatWash(v, { stale = false } = {}){
+function heatWash(v, { stale = false } = {}){
   if (stale) return 'transparent';
   const strength = Math.round(6 + (Math.max(0, Math.min(100, v)) / 100) * 20);
   return `color-mix(in srgb, ${heatColor(v)} ${strength}%, transparent)`;
@@ -50,7 +57,7 @@ const arcPath = (cx, cy, r, a0, a1) => {
  * @param {number} value 0–100
  * @param {object} o  { r, sw, sweep, id, labels }  labels = ['МИР','ВОЙНА'] или null
  */
-export function lightArc(value, o = {}){
+function lightArc(value, o = {}){
   const { r = 150, sw = 13, sweep = 228, id = 'a',
           labels = ['МИР', 'ВОЙНА'] } = o;
   const pad = labels ? 40 : 16;
@@ -105,7 +112,7 @@ export function lightArc(value, o = {}){
  * Спарклайн как акварель: линия почти невидима, работает мягкая заливка.
  * fluid=true растягивает по ширине контейнера (preserveAspectRatio="none").
  */
-export function sparkWash(series, o = {}){
+function sparkWash(series, o = {}){
   const { w = 200, h = 30, color, id = 's', fluid = true } = o;
   if (!series || series.length < 2) return '';
   const col = color || heatColor(series[series.length - 1]);
@@ -131,7 +138,7 @@ export function sparkWash(series, o = {}){
  * Большой график накала с отсечками смен фазы.
  * marks: [{ at: индекс, label: 'Ограниченный конфликт' }]
  */
-export function heatChart(series, o = {}){
+function heatChart(series, o = {}){
   const { w = 1000, h = 210, marks = [], color, from = '12 месяцев назад', to = 'сегодня' } = o;
   const col = color || heatColor(series[series.length - 1]);
   const mn = Math.min(...series), mx = Math.max(...series), r = (mx - mn) || 1;
@@ -162,11 +169,16 @@ export function heatChart(series, o = {}){
 }
 
 /** Переключатель оттенка: sand | ash | clay. */
-export function setTint(tint){
+function setTint(tint){
   document.documentElement.dataset.tint = tint;
 }
 
 /** Grayscale-тест. Правило продукта, а не отладочная утилита. */
-export function toggleNoColor(){
+function toggleNoColor(){
   return document.body.classList.toggle('escx-nocolor');
 }
+
+root.ESCX = {
+  heatColor, heatWash, lightArc, sparkWash, heatChart, setTint, toggleNoColor
+};
+})(typeof globalThis !== 'undefined' ? globalThis : this);

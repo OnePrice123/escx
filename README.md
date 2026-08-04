@@ -15,6 +15,7 @@ python3 ingest/tests/test_llm_offline.py
 
 # 2. посмотреть дизайн-язык и прототипы — просто открыть в браузере
 open design/styleguide.html     # витрина дизайна, три оттенка
+open design/demo.html           # минимальный пример: tokens.css + escx-ui.js
 open web/prototype.html         # кликабельный прототип
 open web/schema.html            # вся система на одной странице
 
@@ -59,13 +60,18 @@ python3 -m escx.cli status
 <link rel="stylesheet" href="design/tokens.css">
 ```
 
-```js
-import { lightArc, sparkWash, heatWash } from './design/escx-ui.js';
-
-gaugeEl.innerHTML = lightArc(64, { id: 'global' });
-rowEl.style.setProperty('--heat', heatWash(79));
-sparkEl.innerHTML = sparkWash(series);
+```html
+<script src="design/escx-ui.js"></script>
 ```
+```js
+gaugeEl.innerHTML = ESCX.lightArc(64, { id: 'global' });
+rowEl.style.setProperty('--heat', ESCX.heatWash(79));
+sparkEl.innerHTML  = ESCX.sparkWash(series);
+```
+
+Обычный `<script>`, а не ES-модуль — намеренно: модули не работают по `file://`
+из-за CORS, а страницы здесь должны открываться двойным кликом, без сервера и сборки.
+Проверить: откройте `design/demo.html`.
 
 ---
 

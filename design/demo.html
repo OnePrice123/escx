@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru" data-tint="sand">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESCX · проверка дизайн-системы</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .wrap{max-width:900px;margin:0 auto;padding:56px clamp(20px,5vw,48px) 96px}
+  .row{display:grid;grid-template-columns:1fr 180px 70px 1fr 150px;gap:18px;
+       align-items:center;padding:15px 20px}
+  .sec{margin-top:56px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="micro">Проверка: tokens.css + escx-ui.js без единой зависимости</div>
+  <h1 class="h1" style="margin-top:12px">Дизайн-система работает</h1>
+
+  <div class="sec">
+    <div class="micro">Дуга как свет</div>
+    <div style="max-width:340px;position:relative;margin-top:8px" id="g"></div>
+  </div>
+
+  <div class="sec">
+    <div class="micro">Тепловая заливка строк · линий между ними нет</div>
+    <div id="rows" style="margin-top:12px"></div>
+  </div>
+
+  <hr class="fade" style="margin-top:48px">
+
+  <div class="sec" style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="pill is-on" data-t="sand">Песок</button>
+    <button class="pill" data-t="ash">Пепел</button>
+    <button class="pill" data-t="clay">Глина</button>
+    <button class="pill" id="nc" style="margin-left:12px">Grayscale-тест</button>
+  </div>
+</div>
+
+<script src="escx-ui.js"></script>
+<script>
+const { lightArc, sparkWash, heatWash, heatColor, setTint, toggleNoColor } = ESCX;
+
+const DATA = [
+  ['Диада A-24','Ограниченный конфликт',79,+34,'Резкая эскалация',1.1,false],
+  ['Диада A-09','Вооружённые инциденты',52,+25,'Резкая эскалация',0.9,false],
+  ['Диада A-05','Напряжённость',34,+10,'Нагрев',0.5,false],
+  ['Диада A-17','Ограниченный конфликт',74, 0,'Стабильно',0.05,true],
+];
+const rnd = s => () => (s = Math.imul(s ^ s >>> 15, 1 | s), ((s ^ s >>> 14) >>> 0) / 4294967296);
+const series = (seed, end, drift) => {
+  const r = rnd(seed); let v = end, out = [];
+  for (let i = 89; i >= 0; i--) { out.push(v); v -= drift * (0.5 + r()) + (r() - .5) * 2.4;
+    v = Math.max(4, Math.min(96, v)); }
+  return out.reverse().map(x => Math.max(3, Math.min(97, x + (end - out[89]))));
+};
+
+function render(){
+  document.getElementById('g').innerHTML = lightArc(64, { r: 110, id: 'demo' });
+  document.getElementById('rows').innerHTML = DATA.map(([nm, ph, h, d, tp, dr, stale], i) => `
+    <div class="heatrow ${stale ? 'is-stale' : ''}" style="--heat:${heatWash(h, { stale })}">
+      <div class="row">
+        <span class="name">${nm}</span>
+        <span style="color:var(--ink-2);font-size:12.5px">${ph}</span>
+        <span class="num" style="font-size:24px;font-weight:200;letter-spacing:-.035em;
+          text-align:right;color:${stale ? 'var(--ink-3)' : heatColor(h)}">${h}</span>
+        <span>${sparkWash(series(i * 91 + 7, h, dr), { color: stale ? 'var(--ink-4)' : undefined, id: 'r' + i })}</span>
+        <span style="color:var(--ink-2);font-size:12.5px;text-align:right">${d > 0 ? '+' : ''}${d} · ${tp}</span>
+      </div>
+    </div>`).join('');
+}
+render();
+
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  setTint(b.dataset.t);
+  document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('is-on', x === b));
+  render();
+});
+document.getElementById('nc').onclick = e => e.target.classList.toggle('is-on', toggleNoColor());
+</script>
+</body>
+</html>
