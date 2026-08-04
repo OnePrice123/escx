@@ -1,0 +1,21 @@
+name: pull-gdelt
+on:
+  schedule:
+    - cron: "7 * * * *"      # ежечасно; GDELT обновляется в :00/:15/:30/:45
+  workflow_dispatch:
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - name: восстановить БД из артефакта
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: {name: escx-db, path: ingest}
+      - run: cd ingest && python -m escx.cli init
+      - run: cd ingest && python -m escx.cli pull-gdelt --slices 5
+      - run: cd ingest && python -m escx.cli status
+      - uses: actions/upload-artifact@v4
+        with: {name: escx-db, path: ingest/escx.db, retention-days: 7, overwrite: true}

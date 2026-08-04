@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESCX — Escalation Index · прототип</title>
+<style>
+:root{
+  --bg:#0B0C0E; --surface:#131518; --surface-2:#191C20;
+  --text:#E8E8E6; --text-2:#8A8E94; --text-3:#5F646B;
+  --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.13);
+  --h0:#4A6E8A; --h1:#6E8A93; --h2:#C9A227; --h3:#D97706; --h4:#B4231E;
+  --mono:"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
+  --sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+[data-theme="light"]{
+  --bg:#FAFAF9; --surface:#FFFFFF; --surface-2:#F2F2F0;
+  --text:#17181A; --text-2:#6C7076; --text-3:#9A9EA4;
+  --line:rgba(0,0,0,.08); --line-2:rgba(0,0,0,.15);
+  --h0:#3C5C75; --h1:#5B747D; --h2:#A6841D; --h3:#B8630A; --h4:#9C1D19;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--sans);
+  font-size:14px;line-height:1.5;font-weight:400;
+  -webkit-font-smoothing:antialiased;
+}
+body.gray{filter:grayscale(1)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+a{color:inherit}
+
+/* ---------- каркас ---------- */
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+header{border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:20}
+.hbar{display:flex;align-items:center;gap:20px;height:56px}
+.logo{font-weight:600;font-size:14px;letter-spacing:.06em;white-space:nowrap}
+.demo{
+  font-size:10px;font-weight:600;letter-spacing:.1em;padding:3px 7px;border-radius:3px;
+  border:1px solid var(--line-2);color:var(--text-2);white-space:nowrap
+}
+nav{display:flex;gap:2px;margin-left:8px}
+nav button{
+  font-size:13px;color:var(--text-2);padding:5px 10px;border-radius:4px
+}
+nav button:hover{color:var(--text);background:var(--surface-2)}
+nav button.on{color:var(--text);background:var(--surface-2)}
+.spacer{flex:1}
+.tog{
+  font-size:11px;color:var(--text-2);padding:5px 9px;border:1px solid var(--line);
+  border-radius:4px;white-space:nowrap
+}
+.tog:hover{border-color:var(--line-2);color:var(--text)}
+.tog.on{color:var(--text);border-color:var(--line-2);background:var(--surface-2)}
+
+.banner{
+  background:var(--surface);border-bottom:1px solid var(--line);
+  font-size:12px;color:var(--text-2);padding:9px 0
+}
+.banner b{color:var(--text);font-weight:600}
+
+main{padding:24px 0 80px}
+.view{display:none}.view.on{display:block}
+
+h1{font-size:20px;font-weight:600;letter-spacing:-.01em}
+h2{font-size:14px;font-weight:600;margin-bottom:10px}
+.sub{color:var(--text-2);font-size:12px;margin-top:3px}
+.sec{margin-top:32px}
+.sechead{
+  display:flex;align-items:baseline;gap:10px;
+  padding-bottom:7px;border-bottom:1px solid var(--line);margin-bottom:14px
+}
+.sechead .sub{margin:0}
+
+/* ---------- фильтры ---------- */
+.filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:18px 0 14px}
+.flabel{font-size:11px;color:var(--text-3);letter-spacing:.04em;margin-right:2px}
+.chip{
+  font-size:12px;color:var(--text-2);padding:4px 9px;border:1px solid var(--line);border-radius:3px
+}
+.chip:hover{border-color:var(--line-2);color:var(--text)}
+.chip.on{color:var(--bg);background:var(--text);border-color:var(--text)}
+.fdiv{width:1px;height:16px;background:var(--line);margin:0 6px}
+
+/* ---------- таблица ---------- */
+table{width:100%;border-collapse:collapse}
+thead th{
+  font-size:10px;font-weight:600;letter-spacing:.09em;color:var(--text-3);
+  text-align:left;padding:0 8px 7px;border-bottom:1px solid var(--line);white-space:nowrap
+}
+thead th.s{cursor:pointer}
+thead th.s:hover{color:var(--text-2)}
+thead th.act{color:var(--text)}
+tbody tr{border-bottom:1px solid var(--line);cursor:pointer}
+tbody tr:hover{background:var(--surface)}
+tbody td{padding:9px 8px;vertical-align:middle}
+td.name{font-weight:400;white-space:nowrap}
+td.r{text-align:right}
+.dim{opacity:.42}
+.lowcov td.name::after{
+  content:"нет данных";font-size:9px;letter-spacing:.06em;color:var(--text-3);
+  border:1px solid var(--line);border-radius:2px;padding:1px 4px;margin-left:8px;vertical-align:1px
+}
+.phase{font-size:12px;color:var(--text-2);white-space:nowrap}
+.hcell{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.dot{width:7px;height:7px;border-radius:50%;flex:none}
+.hval{font-size:14px;min-width:26px;text-align:right}
+.tempo{font-size:12px;white-space:nowrap;color:var(--text-2)}
+.tempo .ar{font-family:var(--mono);margin-right:5px;color:var(--text)}
+.delta{font-size:13px}
+
+/* ---------- карточка ---------- */
+.back{font-size:12px;color:var(--text-2);margin-bottom:14px}
+.back:hover{color:var(--text)}
+.stat{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));
+  gap:1px;background:var(--line);border:1px solid var(--line);margin:16px 0 0
+}
+.stat > div{background:var(--bg);padding:12px 14px}
+.stat .k{font-size:10px;letter-spacing:.09em;color:var(--text-3);margin-bottom:5px}
+.stat .v{font-size:20px;font-weight:600;letter-spacing:-.02em}
+.stat .v small{display:block;font-size:11px;font-weight:400;color:var(--text-2);letter-spacing:0;margin-top:4px;line-height:1.4}
+
+.blocks{display:flex;flex-direction:column;gap:1px}
+.brow{
+  display:grid;grid-template-columns:236px 1fr 42px;align-items:center;gap:12px;
+  padding:8px 0;border-bottom:1px solid var(--line)
+}
+.brow:hover{background:var(--surface)}
+.bname{font-size:13px;color:var(--text-2);white-space:nowrap}
+.bname i{font-style:normal;color:var(--text-3);font-size:11px;margin-left:6px}
+.bar{height:5px;background:var(--surface-2);position:relative;overflow:hidden}
+.bar > span{position:absolute;left:0;top:0;bottom:0}
+.bval{text-align:right;font-size:13px}
+
+.feed{display:flex;flex-direction:column}
+.ev{
+  display:grid;grid-template-columns:74px 84px 1fr auto;gap:12px;align-items:baseline;
+  padding:9px 0;border-bottom:1px solid var(--line)
+}
+.ev .d{font-size:12px;color:var(--text-3)}
+.tag{
+  font-size:9px;letter-spacing:.09em;font-weight:600;padding:2px 6px;
+  border-radius:2px;white-space:nowrap;display:inline-block
+}
+.tag.fact{border:1px solid var(--line-2);color:var(--text)}
+.tag.est{border:1px dashed var(--line-2);color:var(--text-2)}
+.tag.opin{border:1px dotted var(--line-2);color:var(--text-3);font-style:italic}
+.ev .t{font-size:13px}
+.ev .src{font-size:11px;color:var(--text-3);white-space:nowrap}
+.ev .src:hover{color:var(--text-2);text-decoration:underline}
+
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+.pgrid > div{background:var(--bg);padding:14px}
+.pgrid .k{font-size:10px;letter-spacing:.09em;color:var(--text-3);margin-bottom:6px}
+.pgrid .p{font-size:26px;font-weight:600;letter-spacing:-.03em}
+.pgrid .ci{font-size:11px;color:var(--text-2);margin-top:3px}
+.pgrid .base{font-size:11px;color:var(--text-3);margin-top:7px;padding-top:7px;border-top:1px solid var(--line)}
+
+.calib{
+  border:1px solid var(--line);padding:12px 14px;margin-top:1px;
+  font-size:12px;color:var(--text-2);display:flex;gap:14px;align-items:center;flex-wrap:wrap
+}
+.calib b{color:var(--text);font-weight:600}
+
+.flag{
+  border:1px solid var(--line-2);padding:10px 13px;font-size:12px;
+  color:var(--text-2);margin-top:14px;display:flex;gap:10px;align-items:flex-start
+}
+.flag .m{font-family:var(--mono);color:var(--text)}
+
+.note{font-size:12px;color:var(--text-3);margin-top:10px;line-height:1.6}
+
+/* ---------- дуговые индикаторы ---------- */
+.gwrap{display:grid;grid-template-columns:300px 1fr;gap:28px;align-items:center;margin-top:18px}
+.gcenter{text-align:center}
+.grel{position:relative}
+.gover{position:absolute;left:0;right:0;text-align:center}
+.gval{font-size:52px;font-weight:600;letter-spacing:-.04em;line-height:1}
+.gstate{font-size:14px;font-weight:600;margin-top:6px}
+.gdelta{font-size:12px;color:var(--text-2);margin-top:4px}
+.gtext p{font-size:13px;color:var(--text-2);line-height:1.7;margin:0 0 10px}
+.gtext b{color:var(--text);font-weight:600}
+.subg{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+.subg > div{background:var(--bg);padding:14px 12px 10px;text-align:center}
+.subg .k{font-size:10px;letter-spacing:.08em;color:var(--text-3);margin-bottom:2px;min-height:26px}
+.subg .n{font-size:11px;color:var(--text-2);margin-top:2px;line-height:1.5}
+.dyadtop{display:grid;grid-template-columns:244px 1fr;gap:22px;align-items:center;margin-top:16px}
+.contrib{display:grid;grid-template-columns:110px 46px 1fr 44px;gap:12px;align-items:center;
+  padding:7px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.contrib:hover{background:var(--surface)}
+.contrib .w{font-size:11px;color:var(--text-3);text-align:right}
+.anchor{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:baseline;
+  padding:9px 0;border-bottom:1px solid var(--line)}
+.anchor .a{font-size:13px}
+.anchor .a i{font-style:normal;color:var(--text-3);font-size:11px;display:block;margin-top:2px}
+.anchor .b{font-size:13px;white-space:nowrap}
+.qrow{display:grid;grid-template-columns:1fr 92px 96px;gap:14px;align-items:center;
+  padding:11px 0;border-bottom:1px solid var(--line)}
+.qrow .q{font-size:13px;line-height:1.5}
+.qrow .q i{font-style:normal;color:var(--text-3);font-size:11px;display:block;margin-top:3px}
+.qrow .pv{font-size:19px;font-weight:600;text-align:right;letter-spacing:-.02em}
+.qrow .pb{font-size:11px;color:var(--text-3);text-align:right;line-height:1.5}
+.warnbox{border:1px solid var(--line-2);padding:14px 16px;margin-top:16px}
+.warnbox h3{font-size:13px;font-weight:600;margin-bottom:7px}
+.warnbox p{font-size:12px;color:var(--text-2);line-height:1.7;margin:0}
+.strip{display:flex;align-items:center;gap:14px;border:1px solid var(--line);
+  padding:10px 14px;margin:16px 0 0;cursor:pointer;flex-wrap:wrap}
+.strip:hover{border-color:var(--line-2)}
+.strip .lab{font-size:10px;letter-spacing:.09em;color:var(--text-3)}
+.strip .v{font-size:19px;font-weight:600;letter-spacing:-.02em}
+.strip .st{font-size:13px}
+.strip .d{font-size:12px;color:var(--text-2)}
+.strip .go{font-size:12px;color:var(--text-2);margin-left:auto}
+@media(max-width:820px){
+  .gwrap,.dyadtop{grid-template-columns:1fr}
+  .subg{grid-template-columns:1fr}
+  .contrib{grid-template-columns:96px 40px 1fr 40px;gap:8px}
+  .qrow{grid-template-columns:1fr 74px}
+  .qrow .pb{grid-column:2;text-align:right}
+}
+
+/* ---------- калибровка ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.kpis > div{background:var(--bg);padding:14px}
+.kpis .k{font-size:10px;letter-spacing:.09em;color:var(--text-3);margin-bottom:5px}
+.kpis .v{font-size:22px;font-weight:600;letter-spacing:-.02em}
+.kpis .n{font-size:11px;color:var(--text-2);margin-top:3px}
+
+.mrow{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+@media(max-width:820px){
+  .mrow{grid-template-columns:1fr}
+  .brow{grid-template-columns:130px 1fr 42px}
+  .ev{grid-template-columns:64px 78px 1fr;}
+  .ev .src{grid-column:3;justify-self:start}
+  .pgrid{grid-template-columns:1fr}
+  th.hide,td.hide{display:none}
+}
+
+/* ---------- методология ---------- */
+.md{max-width:660px}
+.md p{color:var(--text-2);margin:10px 0;font-size:13px;line-height:1.7}
+.md ol{color:var(--text-2);font-size:13px;line-height:1.7;margin:10px 0 10px 18px}
+.md li{margin:5px 0}
+.md b{color:var(--text);font-weight:600}
+.ladder{width:100%;border-collapse:collapse;margin-top:6px}
+.ladder td{padding:7px 8px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top}
+.ladder td:first-child{width:26px;color:var(--text-3);font-family:var(--mono)}
+.ladder td:nth-child(2){width:200px;white-space:nowrap}
+.ladder td:last-child{color:var(--text-2);font-size:12px}
+footer{border-top:1px solid var(--line);padding:20px 0 40px;font-size:11px;color:var(--text-3);line-height:1.7}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hbar">
+    <span class="logo">ESCX</span>
+    <span class="demo">ДЕМО-ДАННЫЕ</span>
+    <nav>
+      <button data-nav="world" class="on">Мир</button>
+      <button data-nav="list">Обзор</button>
+      <button data-nav="calib">Калибровка</button>
+      <button data-nav="meth">Методология</button>
+    </nav>
+    <span class="spacer"></span>
+    <button class="tog" id="grayBtn" title="Проверка: интерфейс обязан читаться без цвета">Grayscale-тест</button>
+    <button class="tog" id="themeBtn">Светлая</button>
+  </div>
+</header>
+
+<div class="banner">
+  <div class="wrap">
+    <b>Это прототип интерфейса.</b> Все числа синтетические и сгенерированы для демонстрации вёрстки.
+    Ни одно значение не является оценкой реальной ситуации и не может использоваться для каких-либо решений.
+  </div>
+</div>
+
+<main class="wrap">
+
+<!-- ============ МИР ============ -->
+<section class="view on" id="v-world">
+  <h1>Глобальный индекс эскалации</h1>
+  <div class="sub">Один агрегат по всем диадам реестра, взвешенный по последствиям, а не усреднённый.</div>
+
+  <div class="gwrap">
+    <div id="mainGauge"></div>
+    <div class="gtext">
+      <p><b>Что это за число.</b> Взвешенное среднее накала по всем диадам реестра. Вес диады —
+      не «важность на глаз», а наблюдаемый композит: доли сторон в мировом населении, ВВП и военных
+      расходах, множитель за ядерный статус сторон и за плотность союзных обязательств.
+      Веса опубликованы и не меняются вручную под текущую повестку.</p>
+      <p><b>Почему не среднее арифметическое.</b> Тридцать спокойных диад не «гасят» одну диаду
+      ядерных держав в фазе кризиса. Простое среднее давало бы обратное — и было бы ровно тем
+      успокаивающим числом, которое ничего не значит.</p>
+      <p><b>Почему шкала «мир — война», а не часы.</b> Doomsday Clock — экспертное суждение
+      комитета, честно заявленное как суждение. Здесь — расчёт из наблюдаемых величин, который можно
+      воспроизвести и оспорить по каждому слагаемому.</p>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sechead"><h2>Три оси, из которых он складывается</h2><span class="sub">общий индекс скрывает разное — поэтому он разложен</span></div>
+    <div class="subg" id="subGauges"></div>
+    <div class="note">Третья ось — единственная, которая относится к сценарию мировой войны.
+    Первые две могут быть высокими при полностью локальной картине, и наоборот.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sechead"><h2>Кто формирует индекс сегодня</h2><span class="sub">вклад = вес последствий × накал</span></div>
+    <div id="contrib"></div>
+    <div class="note">Клик по строке открывает диаду. Вес последствий и накал разведены намеренно:
+    высокий вклад бывает и от умеренного накала при большом весе, и наоборот.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sechead"><h2>Глобальный индекс за 5 лет</h2><span class="sub">пересчитан по текущей версии методологии v0.3.1</span></div>
+    <div id="worldHist"></div>
+    <div class="note">При смене версии методологии история пересчитывается целиком, а прошлые версии
+    остаются доступны. Иначе график «улучшался» бы каждый раз, когда мы меняем формулу.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sechead"><h2>Вероятности вместо «шанса третьей мировой»</h2><span class="sub">формулировки, которые можно разрешить и посчитать</span></div>
+    <div id="worldQ"></div>
+    <div class="warnbox">
+      <h3>Почему мы не публикуем «вероятность третьей мировой войны»</h3>
+      <p>У этого события нет операционального определения: не задан порог, не задан список участников,
+      не задана дата разрешения. Прогноз, который невозможно разрешить, невозможно и проверить —
+      а непроверяемый прогноз не отличается от угадывания, ради ухода от которого весь проект и строится.
+      Вместо одной эффектной цифры выше стоят четыре формулировки, по каждой из которых через год
+      будет однозначно видно, были мы правы или нет, и каждая попадает в тот же публичный журнал калибровки.</p>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sechead"><h2>Внешние якоря</h2><span class="sub">расхождения показываются, а не прячутся</span></div>
+    <div id="anchors"></div>
+    <div class="note">Doomsday Clock приводится как ориентир иной природы — это заявленное экспертное
+    суждение о совокупной угрозе существованию, включая климат и биориски, а не вероятность и не
+    расчёт из событийных данных. Сравнение уместно по направлению, но не по величине.</div>
+  </div>
+</section>
+
+<!-- ============ ОБЗОР ============ -->
+<section class="view" id="v-list">
+  <h1>Лента изменений</h1>
+  <div class="sub">Сортировка по умолчанию — изменение накала за 30 дней. Вопрос пользователя: «что сдвинулось», а не «где вечно плохо».</div>
+
+  <div class="strip" id="worldStrip" onclick="go('world')"></div>
+  <div class="filters" id="filters"></div>
+
+  <table>
+    <thead><tr>
+      <th style="width:34%">Диада</th>
+      <th style="width:17%">Фаза</th>
+      <th class="s r" data-sort="h" style="width:9%">Накал</th>
+      <th class="hide" style="width:15%">90 дней</th>
+      <th class="s r" data-sort="d30" style="width:11%">Δ 30 дн</th>
+      <th style="width:14%">Темп</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="note" id="count"></div>
+</section>
+
+<!-- ============ КАРТОЧКА ============ -->
+<section class="view" id="v-dyad"></section>
+
+<!-- ============ КАЛИБРОВКА ============ -->
+<section class="view" id="v-calib">
+  <h1>Калибровка</h1>
+  <div class="sub">Главная страница продукта. Если из событий, которым мы дали 20 %, сбывается вдвое больше — это видно здесь, а не прячется.</div>
+
+  <div class="sec">
+    <div class="kpis">
+      <div><div class="k">BRIER SCORE</div><div class="v num">0.081</div><div class="n">чем ниже, тем лучше</div></div>
+      <div><div class="k">БАЗОВАЯ СТАВКА</div><div class="v num">0.104</div><div class="n">naive baseline</div></div>
+      <div><div class="k">SKILL SCORE</div><div class="v num">+22 %</div><div class="n">превосходство над базой</div></div>
+      <div><div class="k">РАЗРЕШЕНО</div><div class="v num">418</div><div class="n">прогнозов с 03.2025</div></div>
+      <div><div class="k">ГОРИЗОНТ</div><div class="v num">6 мес</div><div class="n">выбранный срез</div></div>
+    </div>
+    <div class="note">Валидация строго out-of-time. Журнал прогнозов — append-only: опубликованное значение не редактируется никогда, исправление оформляется новой записью со ссылкой на исходную.</div>
+  </div>
+
+  <div class="sec mrow">
+    <div>
+      <div class="sechead"><h2>Reliability diagram</h2><span class="sub">заявлено против сбылось</span></div>
+      <div id="reliability"></div>
+      <div class="note">Точки на диагонали = честная калибровка. Размер точки — число прогнозов в корзине.</div>
+    </div>
+    <div>
+      <div class="sechead"><h2>Разбиение по корзинам</h2><span class="sub">горизонт 6 мес</span></div>
+      <table><thead><tr>
+        <th>Заявлено</th><th class="r">Прогнозов</th><th class="r">Сбылось</th><th class="r">Факт</th><th class="r">Откл.</th>
+      </tr></thead><tbody id="calibRows"></tbody></table>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sechead"><h2>Где мы ошиблись</h2><span class="sub">крупнейшие промахи, разбор</span></div>
+    <div class="feed" id="misses"></div>
+  </div>
+</section>
+
+<!-- ============ МЕТОДОЛОГИЯ ============ -->
+<section class="view" id="v-meth">
+  <h1>Методология</h1>
+  <div class="sub">Сокращённая версия. Полная — с формулами, весами и историей версий.</div>
+
+  <div class="sec md">
+    <div class="sechead"><h2>Две независимые оси</h2></div>
+    <p>Уровень (где мы на лестнице) и производная (куда движемся) — <b>два разных числа</b>. Замороженный конфликт и мирные переговоры дают одинаковый нулевой темп, но фазу 4 и фазу 1 соответственно. Один индикатор их не различит.</p>
+
+    <div class="sechead" style="margin-top:26px"><h2>Ось A — фаза, 0–6</h2><span class="sub">определяется правилами, не моделью</span></div>
+    <table class="ladder" id="ladder"></table>
+    <p style="margin-top:12px">Пороги 25 и 1000 боевых смертей в год взяты из UCDP/PRIO, а не придуманы. Классификацию может воспроизвести и оспорить внешний рецензент.</p>
+    <p>Повышение фазы — при выполнении критерия и подтверждении из ≥ 2 независимых источников. Понижение — только после <b>90 дней</b> непрерывного невыполнения. Асимметрия намеренная: эскалация быстрая, деэскалация медленная.</p>
+
+    <div class="sechead" style="margin-top:26px"><h2>Ось B — темп</h2></div>
+    <table class="ladder">
+      <tr><td>↑↑</td><td>Резкая эскалация</td><td>Δ₇ &gt; +15</td></tr>
+      <tr><td>↑</td><td>Нагрев</td><td>Δ₃₀ &gt; +8</td></tr>
+      <tr><td>‧</td><td>Стабильно</td><td>|Δ₃₀| ≤ 8</td></tr>
+      <tr><td>↓</td><td>Разрядка</td><td>Δ₃₀ &lt; −8</td></tr>
+      <tr><td>❄</td><td>Заморозка</td><td>фаза ≥ 3, |Δ₃₀| ≤ 5 и &gt; 12 мес без боевых событий</td></tr>
+    </table>
+
+    <div class="sechead" style="margin-top:26px"><h2>Восемь правил против «пальца в небо»</h2></div>
+    <ol>
+      <li><b>Drill-down до сырого события.</b> Число, не раскрывающееся до источника, не публикуется.</li>
+      <li><b>Никакого прогноза без интервала</b> и без явного условия разрешения.</li>
+      <li><b>Базовая ставка первой.</b> Модель — поправка к исторической частоте, а не откровение с нуля.</li>
+      <li><b>Три визуально разных статуса:</b> ФАКТ · ОЦЕНКА · МНЕНИЕ. Никогда не смешиваются.</li>
+      <li><b>Нормировка на медиавнимание.</b> Иначе крупные сюжеты вечно ярче — не потому что опаснее.</li>
+      <li><b>«Нет данных ≠ нет риска».</b> Покрытие ниже 40 % → индекс серый и с предупреждением.</li>
+      <li><b>Человек подтверждает смену фазы.</b> Автоматика предлагает, решение логируется.</li>
+      <li><b>Версионирование всего.</b> Смена весов → пересчёт истории, старая версия остаётся доступна.</li>
+    </ol>
+
+    <div class="sechead" style="margin-top:26px"><h2>Двойная шкала накала</h2></div>
+    <p><b>H_abs</b> — нормировка по глобальному пулу диад: «насколько здесь опасно по мировым меркам». <b>H_rel</b> — нормировка по собственной пятилетней истории диады: «насколько здесь необычно для этой пары». Без H_rel спокойные регионы вечно синие и эскалация в них незаметна; без H_abs любая мелочь в тихом углу выглядит как война.</p>
+
+    <div class="sechead" style="margin-top:26px"><h2>Чего в продукте не будет</h2></div>
+    <p>Никакого тактического OSINT в реальном времени — позиции сил не собираются и не публикуются. Никакой геймификации: ни лидербордов, ни ставок, ни очков. Не предсказываем конкретные атаки, даты и цели. Не даём рекомендаций: «индекс вырос» — да, «продавайте активы» — нет.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="wrap">
+  Прототип интерфейса Escalation Index · демонстрационные данные · август 2026<br>
+  Источники методологических опор: UCDP/PRIO · GDELT · Caldara &amp; Iacoviello GPR (CC BY) · VIEWS (Uppsala/PRIO) · Crisis Group CrisisWatch
+</footer>
+
+<script>
+/* ================= ДАННЫЕ ================= */
+const PHASES=[
+ ["Нормализация","Дипотношения полные, активных претензий нет"],
+ ["Напряжённость","Демарши, отзыв послов, приостановка переговоров"],
+ ["Кризис","Санкции, разрыв отношений, мобилизация, ультиматум"],
+ ["Вооружённые инциденты","Применение силы, но &lt; 25 боевых смертей / 12 мес"],
+ ["Ограниченный конфликт","25–999 боевых смертей / 12 мес"],
+ ["Война","≥ 1000 боевых смертей / 12 мес"],
+ ["Расширенная война","Вступление союзников, удары вне зоны спора, ОМП"]];
+
+const BLOCKS=[["Кинетика",.35],["Военные приготовления",.20],["Дипломатия и институты",.15],["Экономическое давление",.15],["Информационное поле",.15]];
+
+// [название, регион, фаза, целевой накал, дрейф, покрытие, заморожен, расхождение с якорями]
+const RAW=[
+ ["Диада A-01","Южная Азия",2,71,+1.15,92,0,1],
+ ["Диада A-02","Восточная Азия",2,64,+0.75,88,0,0],
+ ["Диада A-03","Ближний Восток",4,83,+0.35,76,0,1],
+ ["Диада A-04","Восточная Европа",5,91,-0.20,94,0,0],
+ ["Диада A-05","Южная Америка",1,34,+0.95,61,0,1],
+ ["Диада A-06","Кавказ",3,38,+0.05,73,1,0],
+ ["Диада A-07","Балканы",1,31,+0.55,68,0,0],
+ ["Диада A-08","Восточное Средиземноморье",1,27,-0.45,79,0,0],
+ ["Диада A-09","Юго-Восточная Азия",3,52,+0.85,58,0,0],
+ ["Диада A-10","Северная Африка",1,24,-0.15,44,0,0],
+ ["Диада A-11","Северо-Восточная Африка",2,57,+0.45,52,0,1],
+ ["Диада A-12","Корейский п-ов",2,61,-0.65,86,0,0],
+ ["Диада A-13","Восточная Азия",1,29,+0.25,81,0,0],
+ ["Диада A-14","Южно-Китайское море",1,44,+0.65,77,0,0],
+ ["Диада A-15","Ближний Восток",3,68,-0.95,71,0,0],
+ ["Диада A-16","Южная Азия",3,49,+0.40,49,0,0],
+ ["Диада A-17","Центральная Африка",4,74,+0.15,38,0,0],
+ ["Диада A-18","Западная Африка",3,46,-0.35,31,0,0],
+ ["Диада A-19","Восточное Средиземноморье",1,22,-0.05,74,1,0],
+ ["Диада A-20","Южная Америка",0,12,+0.10,66,0,0],
+ ["Диада A-21","Центральная Америка",0,15,-0.10,57,0,0],
+ ["Диада A-22","Восточная Европа",2,43,+0.30,69,1,0],
+ ["Диада A-23","Гималаи",2,55,-0.75,72,0,0],
+ ["Диада A-24","Ближний Восток",4,79,+1.45,64,0,1],
+ ["Диада A-25","Аравийский п-ов",4,66,-1.05,54,0,0],
+ ["Диада A-26","Западная Африка",2,36,+0.20,42,0,0]];
+
+function rng(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+const D=RAW.map((r,i)=>{
+  const [name,region,L,target,drift,cov,frozen,diverge]=r;
+  const rand=rng(i*7919+13);
+  // случайное блуждание с дрейфом, 365 дней
+  let v=target, ser=[];
+  for(let d=364;d>=0;d--){ser.push(v);v-=drift*0.33*(0.55+rand()*0.9)+(rand()-0.5)*2.2;v=Math.max(3,Math.min(97,v));}
+  ser.reverse();
+  if(i===2||i===23||i===8){ // резкая эскалация за последнюю неделю
+    for(let k=0;k<7;k++) ser[358+k]+= (k+1)*2.9;
+  }
+  const shift=target-ser[364]; ser=ser.map(x=>Math.max(2,Math.min(98,x+shift)));
+  const cur=ser[364], d7=cur-ser[357], d30=cur-ser[334];
+  // темп по правилам методологии
+  let tempo;
+  if(frozen&&L>=3&&Math.abs(d30)<=5) tempo="frozen";
+  else if(d7>15) tempo="spike";
+  else if(d30>8) tempo="up";
+  else if(d30<-8) tempo="down";
+  else tempo="flat";
+  // относительная шкала: z по собственной истории
+  const mean=ser.reduce((a,b)=>a+b)/365;
+  const sd=Math.sqrt(ser.reduce((a,b)=>a+(b-mean)**2,0)/365)||1;
+  const hrel=Math.max(3,Math.min(97,Math.round(50+((cur-mean)/sd)*13)));
+  // блоки: раскладка вокруг текущего накала
+  const blocks=BLOCKS.map((b,j)=>{
+    let base=cur+(rand()-0.5)*30;
+    if(j===0) base=L>=3?cur+10:cur-22;          // кинетика низкая без боевых
+    if(j===4) base=cur+8+(rand()-0.5)*14;        // инфополе шумит
+    return Math.max(2,Math.min(98,Math.round(base)));
+  });
+  // вероятности: база + поправка на накал, чем дальше горизонт тем выше
+  const baseRate=[0.03+L*0.008,0.06+L*0.013,0.11+L*0.02];
+  const probs=[3,6,12].map((h,j)=>{
+    let p=baseRate[j]*(0.5+cur/45)*(1+Math.max(0,d30)/55);
+    p=Math.max(0.005,Math.min(0.82,p));
+    const w=0.055+0.03*j;
+    return {h,p,lo:Math.max(0.002,p-w),hi:Math.min(0.95,p+w),base:baseRate[j]};
+  });
+  // отсечки смены фаз на графике
+  const marks=[]; const nm=L>=3?2:(L>=1?1:0);
+  for(let k=0;k<nm;k++){const at=60+Math.floor(rand()*280);marks.push({at,to:Math.max(0,L-(nm-1-k))});}
+  marks.sort((a,b)=>a.at-b.at);
+  return {id:i,name,region,L,ser,cur:Math.round(cur),hrel,d7:Math.round(d7),d30:Math.round(d30),
+          tempo,cov,frozen,diverge,blocks,probs,marks,lowcov:cov<40};
+});
+
+/* ============ ВЕС ПОСЛЕДСТВИЙ И ГЛОБАЛЬНЫЙ ИНДЕКС ============ */
+// [доля в мировом населении %, доля в мировом ВВП %, доля в мировых воен. расходах %, ядерных сторон, союзных обязательств]
+const CONS=[
+ [21.4, 4.1, 4.9, 2, 3],[18.9,19.2,14.8, 1,12],[ 2.1, 2.6, 4.4, 1, 9],[ 4.7, 3.4,11.2, 1,31],
+ [ 0.4, 0.3, 0.2, 0, 2],[ 0.2, 0.1, 0.3, 0, 6],[ 0.2, 0.1, 0.1, 0, 4],[ 1.3, 1.4, 1.1, 0,29],
+ [ 1.1, 0.6, 0.3, 0, 2],[ 0.9, 0.4, 0.2, 0, 1],[ 2.4, 0.3, 0.2, 0, 0],[ 1.6, 2.4, 3.6, 1, 4],
+ [ 1.5, 4.9, 1.9, 0, 8],[ 2.0, 2.1, 2.2, 0, 7],[ 1.4, 0.8, 1.6, 1, 5],[ 3.2, 0.5, 0.7, 2, 3],
+ [ 1.6, 0.1, 0.1, 0, 0],[ 0.7, 0.1, 0.1, 0, 0],[ 0.3, 0.2, 0.2, 0,31],[ 0.6, 0.5, 0.1, 0, 0],
+ [ 0.3, 0.1, 0.0, 0, 0],[ 0.6, 0.2, 0.4, 0, 8],[36.1, 7.4, 9.8, 2, 1],[ 1.5, 0.6, 1.9, 1, 4],
+ [ 0.9, 1.1, 2.8, 0, 6],[ 3.1, 0.2, 0.2, 0, 0]];
+
+const NUKEMULT=[1,2.2,3.6];
+D.forEach(d=>{
+  const c=CONS[d.id];
+  const base=0.25*c[0]+0.30*c[1]+0.35*c[2];
+  d.cons={pop:c[0],gdp:c[1],mil:c[2],nukes:c[3],allies:c[4]};
+  d.w=Math.pow(Math.max(base,0.05),0.62)*NUKEMULT[c[3]]*(1+c[4]/45);
+});
+const SUMW=D.reduce((a,d)=>a+d.w,0);
+D.forEach(d=>{d.wshare=d.w/SUMW; d.contrib=d.wshare*d.cur;});
+
+const GEI=Math.round(D.reduce((a,d)=>a+d.w*d.cur,0)/SUMW);
+const GEI30=Math.round(D.reduce((a,d)=>a+d.w*(d.cur-d.d30),0)/SUMW);
+const GEID=GEI-GEI30;
+
+// три оси
+const wActive=D.filter(d=>d.L>=3).reduce((a,d)=>a+d.w,0)/SUMW;
+const AX_KIN=Math.round(Math.min(100, wActive*100*1.55 + D.filter(d=>d.L>=4).length*2.4));
+const topMil=[...D].sort((a,b)=>b.cons.mil-a.cons.mil).slice(0,8);
+const AX_GP=Math.round(Math.min(100,
+  topMil.filter(d=>d.L>=2).reduce((a,d)=>a+d.w*d.cur,0)/topMil.reduce((a,d)=>a+d.w,0)*1.15));
+const nuk=D.filter(d=>d.cons.nukes>0);
+const AX_STR=Math.round(Math.min(100,
+  nuk.filter(d=>d.L>=2).reduce((a,d)=>a+d.w*d.cur*(d.cons.nukes===2?1.35:1),0)/nuk.reduce((a,d)=>a+d.w,0)));
+
+function stateOf(v){
+  return v<20?"Спокойно":v<40?"Напряжённо":v<60?"Кризисный фон":v<80?"Опасно":"Критично";}
+
+// история глобального индекса, 60 месяцев
+const HIST=(()=>{const r=rng(2026);let v=GEI,out=[];
+  for(let m=59;m>=0;m--){out.push(v);v-=0.42+(r()-0.5)*4.6;v=Math.max(18,Math.min(92,v));}
+  out.reverse();const sh=GEI-out[59];return out.map(x=>Math.max(15,Math.min(95,x+sh)));})();
+
+const WORLDQ=[
+ ["Новый межгосударственный вооружённый конфликт между государствами с населением более 20 млн",
+  "≥ 25 боевых смертей за 12 мес, порог UCDP · разрешение 04.08.2027", 0.34, 0.19],
+ ["Прямое вооружённое столкновение между двумя ядерными государствами",
+  "≥ 25 боевых смертей, обе стороны обладают ЯО · разрешение 04.08.2027", 0.11, 0.06],
+ ["Вступление в идущий конфликт государства из первой десятки по военным расходам",
+  "на стороне участника, официально или де-факто · разрешение 04.08.2027", 0.17, 0.09],
+ ["Применение ядерного оружия по любой цели",
+  "любой мощности, любой стороной · разрешение 04.08.2027", 0.014, 0.008]];
+
+const ANCHORS=[
+ ["Doomsday Clock","Bulletin of the Atomic Scientists, январь 2026 — экспертное суждение, не вероятность","85 сек до полуночи"],
+ ["GPR Index","Caldara &amp; Iacoviello, медиа-индекс геополитического риска, месячный срез","выше 5-летней медианы"],
+ ["VIEWS","Uppsala/PRIO, ML-прогноз вооружённого конфликта, обновление ежемесячно","совпадает по направлению"],
+ ["Рынки предсказаний","агрегат по сопоставимым контрактам","выше нашей оценки на 8 п.п."],
+ ["CrisisWatch","Crisis Group, экспертные оценки ухудшения за месяц","ухудшений больше, чем улучшений"]];
+
+/* ============ ЦВЕТ И ФОРМАТ ============ */
+function heat(v){const c=getComputedStyle(document.documentElement);
+  const i=v<20?0:v<40?1:v<60?2:v<80?3:4;return c.getPropertyValue('--h'+i).trim();}
+const TEMPO={
+ spike:["↑↑","Резкая эскалация"],up:["↑","Нагрев"],flat:["‧","Стабильно"],
+ down:["↓","Разрядка"],frozen:["❄","Заморозка"]};
+const sgn=n=>(n>0?"+":"")+n;
+
+function polar(cx,cy,r,d){const a=(d-90)*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];}
+function arcp(cx,cy,r,a0,a1){
+  const[x0,y0]=polar(cx,cy,r,a0),[x1,y1]=polar(cx,cy,r,a1);
+  return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${(a1-a0)>180?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;}
+
+// минималистичная дуга: дорожка, заливка, засечка. Без стрелок, бликов и объёма.
+function gauge(v,o){
+  o=Object.assign({r:104,sw:9,sweep:240,ends:["МИР","ВОЙНА"],ticks:[20,40,60,80],pad:30},o);
+  const r=o.r,sw=o.sw,cx=r+sw+o.pad,cy=r+sw+6;
+  const w=cx*2, h=cy+r*Math.sin((o.sweep/2-90)*Math.PI/180)+sw/2+(o.ends?30:14);
+  const a0=-o.sweep/2,a1=o.sweep/2,av=a0+(Math.max(0,Math.min(100,v))/100)*o.sweep;
+  const col=heat(v);
+  let t="";
+  (o.ticks||[]).forEach(tv=>{const a=a0+(tv/100)*o.sweep;
+    const[x0,y0]=polar(cx,cy,r-sw/2-3,a),[x1,y1]=polar(cx,cy,r+sw/2+3,a);
+    t+=`<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" style="stroke:var(--bg);stroke-width:2"/>`;});
+  const[mx0,my0]=polar(cx,cy,r-sw/2-6,av),[mx1,my1]=polar(cx,cy,r+sw/2+7,av);
+  let e="";
+  if(o.ends){const[lx,ly]=polar(cx,cy,r+sw/2+16,a0),[rx,ry]=polar(cx,cy,r+sw/2+16,a1);
+    e=`<text x="${lx.toFixed(0)}" y="${(ly+10).toFixed(0)}" font-size="10" text-anchor="middle" style="fill:var(--text-3);letter-spacing:.1em">${o.ends[0]}</text>
+       <text x="${rx.toFixed(0)}" y="${(ry+10).toFixed(0)}" font-size="10" text-anchor="middle" style="fill:var(--text-3);letter-spacing:.1em">${o.ends[1]}</text>`;}
+  return `<svg width="100%" viewBox="0 0 ${w} ${h.toFixed(0)}" style="display:block;max-width:${w}px;margin:0 auto">
+    <path d="${arcp(cx,cy,r,a0,a1)}" fill="none" style="stroke:var(--surface-2)" stroke-width="${sw}" stroke-linecap="butt"/>
+    <path d="${arcp(cx,cy,r,a0,av)}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="butt"/>
+    ${t}
+    <line x1="${mx0.toFixed(1)}" y1="${my0.toFixed(1)}" x2="${mx1.toFixed(1)}" y2="${my1.toFixed(1)}" style="stroke:var(--text);stroke-width:2"/>
+    ${e}</svg>`;}
+
+function spark(ser,w,h,col){
+  const s=ser.slice(-90),mn=Math.min(...s),mx=Math.max(...s),r=(mx-mn)||1;
+  const pts=s.map((v,i)=>[(i/(s.length-1))*w,h-((v-mn)/r)*(h-2)-1]);
+  const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <path d="${d}" fill="none" stroke="${col}" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+}
+
+/* ============ ФИЛЬТРЫ И ТАБЛИЦА ============ */
+let sortKey="d30", fPhase=null, fTempo=null, fCov=false;
+
+function drawFilters(){
+  const f=document.getElementById('filters');
+  let h='<span class="flabel">ФАЗА</span>';
+  h+=`<button class="chip ${fPhase===null?'on':''}" data-p="all">все</button>`;
+  [[0,1,"0–1 мир и напряжённость"],[2,2,"2 кризис"],[3,4,"3–4 вооружённый конфликт"],[5,6,"5–6 война"]].forEach(([a,b,lab])=>{
+    h+=`<button class="chip ${fPhase&&fPhase[0]===a?'on':''}" data-p="${a},${b}">${lab}</button>`;});
+  h+='<span class="fdiv"></span><span class="flabel">ТЕМП</span>';
+  h+=`<button class="chip ${fTempo===null?'on':''}" data-t="all">все</button>`;
+  Object.entries(TEMPO).forEach(([k,v])=>{
+    h+=`<button class="chip ${fTempo===k?'on':''}" data-t="${k}">${v[0]} ${v[1]}</button>`;});
+  h+='<span class="fdiv"></span>';
+  h+=`<button class="chip ${fCov?'on':''}" data-c="1">только покрытие ≥ 40 %</button>`;
+  f.innerHTML=h;
+  f.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{
+    fPhase=b.dataset.p==="all"?null:b.dataset.p.split(',').map(Number);draw();});
+  f.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{
+    fTempo=b.dataset.t==="all"?null:b.dataset.t;draw();});
+  f.querySelector('[data-c]').onclick=()=>{fCov=!fCov;draw();};
+}
+
+function draw(){
+  drawFilters();
+  let list=D.filter(d=>
+    (!fPhase||(d.L>=fPhase[0]&&d.L<=fPhase[1]))&&
+    (!fTempo||d.tempo===fTempo)&&
+    (!fCov||!d.lowcov));
+  list.sort((a,b)=>sortKey==="h"?b.cur-a.cur:b.d30-a.d30);
+  document.getElementById('rows').innerHTML=list.map(d=>{
+    const t=TEMPO[d.tempo];
+    return `<tr data-id="${d.id}" class="${d.lowcov?'lowcov':''}">
+      <td class="name ${d.lowcov?'dim':''}">${d.name}</td>
+      <td class="phase">${PHASES[d.L][0]}</td>
+      <td class="r ${d.lowcov?'dim':''}"><span class="hcell">
+        <span class="dot" style="background:${heat(d.cur)}"></span>
+        <span class="hval num">${d.cur}</span></span></td>
+      <td class="hide ${d.lowcov?'dim':''}">${spark(d.ser,110,20,heat(d.cur))}</td>
+      <td class="r delta num ${d.lowcov?'dim':''}">${sgn(d.d30)}</td>
+      <td class="tempo"><span class="ar">${t[0]}</span>${t[1]}</td></tr>`;}).join('');
+  document.getElementById('rows').querySelectorAll('tr').forEach(tr=>
+    tr.onclick=()=>openDyad(+tr.dataset.id));
+  document.getElementById('count').textContent=
+    `${list.length} из ${D.length} диад · серым отмечены диады с покрытием данных ниже 40 % — «нет данных» не равно «нет риска»`;
+  document.querySelectorAll('[data-sort]').forEach(th=>
+    th.classList.toggle('act',th.dataset.sort===sortKey));
+}
+document.querySelectorAll('[data-sort]').forEach(th=>
+  th.onclick=()=>{sortKey=th.dataset.sort;draw();});
+
+/* ============ КАРТОЧКА ДИАДЫ ============ */
+const DRIVERS=[
+ [0,"fact","Зафиксировано столкновение в спорной зоне, есть подтверждение из двух источников","UCDP GED #48213"],
+ [0,"fact","Расширение географии инцидентов: затронуты 3 новые гео-ячейки","UCDP GED"],
+ [1,"fact","Объявлены внеплановые учения в приграничном округе","гос. МО, 04.07"],
+ [1,"fact","Закрытие сегмента воздушного пространства сроком на 10 суток","NOTAM A2291/26"],
+ [2,"fact","Отзыв посла для консультаций","МИД, официальное заявление"],
+ [2,"est","Баланс CAMEO сместился в конфликтную сторону: −3.1 по Goldstein за 14 дней","GDELT, расчёт"],
+ [3,"fact","Введены ограничения на экспорт двух товарных групп","офиц. реестр, 22.07"],
+ [3,"est","Двусторонний товарооборот ниже 5-летней медианы на 34 %","UN Comtrade, расчёт"],
+ [4,"est","Семантический скоринг риторики: рост эскалационных формулировок в 2.4 раза","LLM-скоринг, 30 дн"],
+ [4,"est","Объём покрытия диады вырос втрое — поправка на медиавнимание применена","GDELT, нормировано"],
+ [2,"opin","Аналитик: переговорный трек формально жив, но встречи перенесены дважды","ревью 28.07"],
+ [1,"opin","Аналитик: переброска носит ротационный характер, вес индикатора снижен","ревью 19.07"]];
+
+function chart(d,w,h){
+  const s=d.ser,mn=Math.min(...s),mx=Math.max(...s),r=(mx-mn)||1,pad=26;
+  const X=i=>pad+(i/364)*(w-pad-8), Y=v=>h-18-((v-mn)/r)*(h-52);
+  const line=s.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");
+  const area=line+` L ${X(364).toFixed(1)} ${h-18} L ${X(0).toFixed(1)} ${h-18} Z`;
+  const col=heat(d.cur);
+  let g="";
+  [0,0.5,1].forEach(t=>{const v=mn+r*t,y=Y(v);
+    g+=`<line x1="${pad}" x2="${w-8}" y1="${y}" y2="${y}" style="stroke:var(--line);stroke-width:1"/>
+        <text x="0" y="${y+3.5}" font-size="9" style="fill:var(--text-3);font-family:var(--mono)">${Math.round(v)}</text>`;});
+  let m="";
+  d.marks.forEach((k,mi)=>{const x=X(k.at),ty=mi%2?31:16;
+    m+=`<line x1="${x}" x2="${x}" y1="${ty-8}" y2="${h-18}" style="stroke:var(--line-2);stroke-width:1" stroke-dasharray="2 3"/>
+        <text x="${x+4}" y="${ty}" font-size="9" style="fill:var(--text-2)">→ ${PHASES[k.to][0]}</text>`;});
+  let ax="";
+  ["12 мес назад","9","6","3","сегодня"].forEach((t,i)=>{
+    const x=X(i*91);ax+=`<text x="${x}" y="${h-5}" font-size="9" style="fill:var(--text-3)"
+      text-anchor="${i===0?'start':i===4?'end':'middle'}">${t}</text>`;});
+  return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block">
+    ${g}${m}<path d="${area}" fill="${col}" opacity=".10"/>
+    <path d="${line}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linejoin="round"/>
+    <circle cx="${X(364)}" cy="${Y(d.cur)}" r="3" fill="${col}"/>${ax}</svg>`;
+}
+
+function openDyad(id){
+  const d=D[id],t=TEMPO[d.tempo];
+  const pool=DRIVERS.filter(x=>d.L>=3||x[0]!==0);
+  const drv=[...pool.filter(x=>x[1]==='fact').slice(0,5),
+             ...pool.filter(x=>x[1]==='est').slice(0,3),
+             ...pool.filter(x=>x[1]==='opin').slice(0,1)]
+    .map((x,i)=>{const dt=new Date(2026,7,3-i*3-(i%2));
+      const day=String(dt.getDate()).padStart(2,'0'),mo=String(dt.getMonth()+1).padStart(2,'0');
+      return `<div class="ev">
+        <span class="d num">${day}.${mo}.26</span>
+        <span><span class="tag ${x[1]}">${x[1]==='fact'?'ФАКТ':x[1]==='est'?'ОЦЕНКА':'МНЕНИЕ'}</span></span>
+        <span class="t">${x[2]}</span>
+        <a class="src" href="#" onclick="return false">${x[3]} ↗</a></div>`;}).join('');
+
+  document.getElementById('v-dyad').innerHTML=`
+    <button class="back" onclick="go('list')">← Лента изменений</button>
+    <h1>${d.name}</h1>
+    <div class="sub">${d.region} · тип диады: территориальный спор · в реестре с 1993</div>
+
+    <div class="dyadtop">
+      <div>
+        <div class="grel">${gauge(d.cur,{r:76,sw:8,sweep:240,ticks:[20,40,60,80],pad:30})}
+          <div class="gover" style="top:37%">
+            <div class="gval num" style="font-size:34px;color:${heat(d.cur)}">${d.cur}</div>
+            <div class="gdelta">H_abs · ${stateOf(d.cur)}</div></div></div>
+      </div>
+      <div class="stat" style="margin:0">
+        <div><div class="k">ФАЗА</div><div class="v">${d.L}<small>${PHASES[d.L][0]}</small></div></div>
+        <div><div class="k">H_REL</div><div class="v num" style="color:${heat(d.hrel)}">${d.hrel}<small>по своей истории</small></div></div>
+        <div><div class="k">ТЕМП</div><div class="v" style="font-size:15px">${t[0]} ${t[1]}<small>Δ₃₀ ${sgn(d.d30)} · Δ₇ ${sgn(d.d7)}</small></div></div>
+        <div><div class="k">ПОКРЫТИЕ</div><div class="v num">${d.cov}<small>% индикаторов свежие</small></div></div>
+        <div><div class="k">ВЕС В МИРЕ</div><div class="v num">${(d.wshare*100).toFixed(1)}<small>% глобального индекса</small></div></div>
+      </div>
+    </div>
+    ${d.lowcov?`<div class="flag"><span class="m">!</span><div>Покрытие данных ниже 40 %. Индекс показан приглушённым: отсутствие данных не означает отсутствия риска.</div></div>`:''}
+
+    <div class="sec">
+      <div class="sechead"><h2>Накал за 12 месяцев</h2><span class="sub">пунктиром — подтверждённые смены фазы, каждая раскрывается в запись журнала</span></div>
+      ${chart(d,860,220)}
+    </div>
+
+    <div class="sec">
+      <div class="sechead"><h2>Разложение по блокам</h2><span class="sub">клик по блоку раскрывает индикаторы, клик по индикатору — сырые события</span></div>
+      <div class="blocks">${BLOCKS.map((b,j)=>`
+        <div class="brow">
+          <div class="bname">${b[0]}<i>вес ${b[1].toFixed(2)}</i></div>
+          <div class="bar"><span style="width:${d.blocks[j]}%;background:${heat(d.blocks[j])}"></span></div>
+          <div class="bval num">${d.blocks[j]}</div></div>`).join('')}</div>
+    </div>
+
+    <div class="sec">
+      <div class="sechead"><h2>Вероятность перехода на следующую ступень</h2><span class="sub">P(фаза вырастет хотя бы на одну) — бинарно, проверяемо, с фиксированной датой разрешения</span></div>
+      <div class="pgrid">${d.probs.map(p=>`
+        <div><div class="k">ГОРИЗОНТ ${p.h} МЕС</div>
+          <div class="p num">${Math.round(p.p*100)} %</div>
+          <div class="ci num">интервал ${Math.round(p.lo*100)}–${Math.round(p.hi*100)} %</div>
+          <div class="base">базовая ставка ${Math.round(p.base*100)} % · модель v0.3.1</div></div>`).join('')}</div>
+      <div class="calib">
+        <span>Калибровка на горизонте 6 мес:</span>
+        <span>мы давали <b class="num">20 %</b> в <b class="num">63</b> случаях — сбылось <b class="num">18 %</b></span>
+        <span>·</span><span>Brier <b class="num">0.081</b> против базы <b class="num">0.104</b></span>
+        <span>·</span><a href="#" onclick="go('calib');return false" style="color:var(--text)">вся калибровка →</a>
+      </div>
+      ${d.diverge?`<div class="flag"><span class="m">≠</span><div>
+        <b style="color:var(--text)">Расхождение с внешними якорями.</b> Наша оценка на 6 мес — ${Math.round(d.probs[1].p*100)} %,
+        рынок предсказаний — ${Math.round(d.probs[1].p*100)+21} %, VIEWS — ${Math.max(2,Math.round(d.probs[1].p*100)-9)} %.
+        Расхождение показывается, а не прячется: пользователю нужен именно этот сигнал.</div></div>`:''}
+    </div>
+
+    <div class="sec">
+      <div class="sechead"><h2>Драйверы за 30 дней</h2><span class="sub">события, сильнее всего сдвинувшие индекс</span></div>
+      <div class="feed">${drv}</div>
+      <div class="note">Три статуса различаются визуально и никогда не смешиваются: <span class="tag fact">ФАКТ</span> произошло, есть источник · <span class="tag est">ОЦЕНКА</span> расчёт модели · <span class="tag opin">МНЕНИЕ</span> суждение аналитика с подписью и датой.</div>
+    </div>`;
+  go('dyad');
+  window.scrollTo(0,0);
+}
+
+/* ============ КАЛИБРОВКА ============ */
+const CAL=[[5,71,4,5.6],[10,58,7,12.1],[20,63,11,17.5],[30,44,15,34.1],[40,39,14,35.9],
+           [50,31,17,54.8],[60,27,15,55.6],[75,22,18,81.8],[90,14,13,92.9]];
+function drawCalib(){
+  const w=420,h=300,pad=34;
+  const X=v=>pad+(v/100)*(w-pad-10), Y=v=>h-pad-(v/100)*(h-pad-12);
+  let g="";
+  [0,25,50,75,100].forEach(v=>{
+    g+=`<line x1="${pad}" x2="${w-10}" y1="${Y(v)}" y2="${Y(v)}" style="stroke:var(--line)"/>
+        <text x="${pad-6}" y="${Y(v)+3.5}" font-size="9" text-anchor="end" style="fill:var(--text-3);font-family:var(--mono)">${v}</text>
+        <text x="${X(v)}" y="${h-pad+13}" font-size="9" text-anchor="middle" style="fill:var(--text-3);font-family:var(--mono)">${v}</text>`;});
+  const pts=CAL.map(c=>`<circle cx="${X(c[0])}" cy="${Y(c[3])}" r="${3+Math.sqrt(c[1])/2.6}"
+      fill="${heat(c[0])}" fill-opacity=".55" stroke="${heat(c[0])}" stroke-width="1.2"/>`).join('');
+  const path=CAL.map((c,i)=>(i?"L":"M")+X(c[0])+" "+Y(c[3])).join(" ");
+  document.getElementById('reliability').innerHTML=`<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block">
+    ${g}<line x1="${X(0)}" y1="${Y(0)}" x2="${X(100)}" y2="${Y(100)}" style="stroke:var(--text-3)" stroke-dasharray="3 4"/>
+    <path d="${path}" fill="none" style="stroke:var(--text-2);stroke-width:1.2"/>${pts}
+    <text x="${pad}" y="12" font-size="9" style="fill:var(--text-3)">сбылось, %</text>
+    <text x="${w-10}" y="${h-4}" font-size="9" text-anchor="end" style="fill:var(--text-3)">заявлено, %</text></svg>`;
+  document.getElementById('calibRows').innerHTML=CAL.map(c=>{
+    const dev=(c[3]-c[0]).toFixed(1);
+    return `<tr style="cursor:default"><td class="num">${c[0]} %</td><td class="r num">${c[1]}</td>
+      <td class="r num">${c[2]}</td><td class="r num">${c[3].toFixed(1)} %</td>
+      <td class="r num" style="color:${Math.abs(dev)>8?'var(--h3)':'var(--text-2)'}">${dev>0?'+':''}${dev}</td></tr>`;}).join('');
+  document.getElementById('misses').innerHTML=[
+   ["03.2026","Диада A-24","Дали 12 % на 6 мес, фаза выросла через 7 недель. Причина: блок «военные приготовления» недооценил ротацию как подготовку — вес пересмотрен в v0.3.0"],
+   ["11.2025","Диада A-12","Дали 58 %, перехода не случилось. Модель переоценила инфополе на фоне медиавсплеска. Введена жёсткая нормировка на объём покрытия"],
+   ["07.2025","Диада A-18","Прогноз не выпущен: покрытие 31 %. Фаза выросла. Пробел признан — расширяем источники по региону"]
+  ].map(m=>`<div class="ev"><span class="d num">${m[0]}</span>
+    <span><span class="tag est">РАЗБОР</span></span><span class="t"><b style="font-weight:600">${m[1]}.</b> ${m[2]}</span></div>`).join('');
+}
+
+/* ============ ЭКРАН «МИР» ============ */
+function drawWorld(){
+  document.getElementById('mainGauge').innerHTML=
+    `<div class="grel">${gauge(GEI,{r:104,sw:10})}
+       <div class="gover" style="top:38%">
+         <div class="gval num" style="color:${heat(GEI)}">${GEI}</div>
+         <div class="gstate">${stateOf(GEI)}</div></div></div>
+     <div class="gdelta num" style="text-align:center;margin-top:8px">${sgn(GEID)} за 30 дней · версия v0.3.1</div>`;
+
+  const AX=[["КИНЕТИЧЕСКАЯ ИНТЕНСИВНОСТЬ",AX_KIN,"сколько идёт активных конфликтов и с какой смертностью"],
+            ["ВОВЛЕЧЁННОСТЬ КРУПНЫХ ДЕРЖАВ",AX_GP,"доля мирового военного потенциала в диадах фазы ≥ 2"],
+            ["СТРАТЕГИЧЕСКИЙ РИСК",AX_STR,"ядерные диады в фазе ≥ 2, состояние договоров, доктрина"]];
+  document.getElementById('subGauges').innerHTML=AX.map(a=>`
+    <div><div class="k">${a[0]}</div>
+      <div class="grel">${gauge(a[1],{r:52,sw:7,sweep:200,ends:null,ticks:[50]})}
+        <div class="gover" style="top:46%"><span class="gval num" style="font-size:26px;color:${heat(a[1])}">${a[1]}</span></div></div>
+      <div class="n">${a[2]}</div></div>`).join('');
+
+  const top=[...D].sort((a,b)=>b.contrib-a.contrib).slice(0,9);
+  const mxc=top[0].contrib;
+  document.getElementById('contrib').innerHTML=top.map(d=>`
+    <div class="contrib" data-id="${d.id}">
+      <div>${d.name}</div>
+      <div class="num r" style="text-align:right;color:${heat(d.cur)}">${d.cur}</div>
+      <div class="bar"><span style="width:${(d.contrib/mxc*100).toFixed(0)}%;background:${heat(d.cur)}"></span></div>
+      <div class="w num">${(d.wshare*100).toFixed(1)}%</div></div>`).join('')
+    +`<div class="note" style="margin-top:8px">столбцы: накал · вклад в индекс · вес последствий диады</div>`;
+  document.querySelectorAll('#contrib .contrib').forEach(r=>r.onclick=()=>openDyad(+r.dataset.id));
+
+  // история
+  const w=860,h=190,pad=26,mn=Math.min(...HIST),mx=Math.max(...HIST),r=(mx-mn)||1;
+  const X=i=>pad+(i/59)*(w-pad-8), Y=v=>h-20-((v-mn)/r)*(h-40);
+  const line=HIST.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");
+  let g="";[0,.5,1].forEach(t=>{const v=mn+r*t,y=Y(v);
+    g+=`<line x1="${pad}" x2="${w-8}" y1="${y}" y2="${y}" style="stroke:var(--line)"/>
+        <text x="0" y="${y+3.5}" font-size="9" style="fill:var(--text-3);font-family:var(--mono)">${Math.round(v)}</text>`;});
+  let ax="";["5 лет назад","4","3","2","1","сейчас"].forEach((t,i)=>{const x=X(i*11.8);
+    ax+=`<text x="${x.toFixed(0)}" y="${h-5}" font-size="9" style="fill:var(--text-3)"
+      text-anchor="${i===0?'start':i===5?'end':'middle'}">${t}</text>`;});
+  document.getElementById('worldHist').innerHTML=`<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block">
+    ${g}<path d="${line} L ${X(59).toFixed(1)} ${h-20} L ${X(0).toFixed(1)} ${h-20} Z" fill="${heat(GEI)}" opacity=".09"/>
+    <path d="${line}" fill="none" stroke="${heat(GEI)}" stroke-width="1.6" stroke-linejoin="round"/>
+    <circle cx="${X(59).toFixed(1)}" cy="${Y(GEI).toFixed(1)}" r="3" fill="${heat(GEI)}"/>${ax}</svg>`;
+
+  document.getElementById('worldQ').innerHTML=WORLDQ.map(q=>{
+    const pc=q[2]<0.05?(q[2]*100).toFixed(1):Math.round(q[2]*100);
+    const bc=q[3]<0.05?(q[3]*100).toFixed(1):Math.round(q[3]*100);
+    return `<div class="qrow">
+      <div class="q">${q[0]}<i>${q[1]}</i></div>
+      <div class="pv num">${pc} %</div>
+      <div class="pb">база ${bc} %<br>горизонт 12 мес</div></div>`;}).join('');
+
+  document.getElementById('anchors').innerHTML=ANCHORS.map(a=>`
+    <div class="anchor"><div class="a">${a[0]}<i>${a[1]}</i></div><div class="b num">${a[2]}</div></div>`).join('');
+}
+
+function drawStrip(){
+  document.getElementById('worldStrip').innerHTML=`
+    <span class="lab">ГЛОБАЛЬНЫЙ ИНДЕКС</span>
+    <span class="dot" style="background:${heat(GEI)}"></span>
+    <span class="v num" style="color:${heat(GEI)}">${GEI}</span>
+    <span class="st">${stateOf(GEI)}</span>
+    <span class="d num">${sgn(GEID)} за 30 дн</span>
+    <span class="d">· стратегическая ось ${AX_STR}</span>
+    <span class="go">разбор →</span>`;
+}
+
+/* ============ НАВИГАЦИЯ ============ */
+function go(v){
+  document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  document.querySelectorAll('nav button').forEach(b=>
+    b.classList.toggle('on',b.dataset.nav===v));
+  if(v==='calib') drawCalib();
+  if(v==='world') drawWorld();
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.nav));
+
+document.getElementById('ladder').innerHTML=PHASES.map((p,i)=>
+  `<tr><td>${i}</td><td>${p[0]}</td><td>${p[1]}</td></tr>`).join('');
+
+const tb=document.getElementById('themeBtn');
+tb.onclick=()=>{
+  const l=document.documentElement.dataset.theme==='light';
+  document.documentElement.dataset.theme=l?'dark':'light';
+  tb.textContent=l?'Светлая':'Тёмная';
+  draw(); drawStrip(); drawWorld();
+  if(document.getElementById('v-calib').classList.contains('on'))drawCalib();
+};
+const gb=document.getElementById('grayBtn');
+gb.onclick=()=>{document.body.classList.toggle('gray');gb.classList.toggle('on',document.body.classList.contains('gray'));};
+
+draw();
+drawStrip();
+drawWorld();
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+name: daily
+on:
+  schedule:
+    - cron: "0 3 * * *"      # 03:00 UTC, как в техплане
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: python ingest/tests/test_offline.py          # тесты до прогона, а не после
+      - run: python ingest/tests/test_llm_offline.py
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with: {name: escx-db, path: ingest}
+      - run: cd ingest && python -m escx.cli init
+      - name: догрузить UCDP за последний месяц
+        run: |
+          cd ingest
+          END=$(date -u +%Y-%m-%d)
+          START=$(date -u -d '35 days ago' +%Y-%m-%d)
+          python -m escx.cli backfill-ucdp --start "$START" --end "$END"
+      - run: cd ingest && python -m escx.cli status
+      - uses: actions/upload-artifact@v4
+        with: {name: escx-db, path: ingest/escx.db, retention-days: 30, overwrite: true}

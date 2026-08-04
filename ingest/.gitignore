@@ -1,0 +1,4 @@
+.cache/
+escx.db*
+__pycache__/
+*.pyc
