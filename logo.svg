@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 100" width="420" height="100"
+  fill="none" role="img" aria-label="brink.watch">
+  <g><defs><linearGradient id="gL" gradientUnits="userSpaceOnUse" x1="34.5" y1="0" x2="75.4" y2="0"><stop offset="0" stop-color="#7E8B92" stop-opacity=".28"/><stop offset=".55" stop-color="#C4703B" stop-opacity=".72"/><stop offset="1" stop-color="#C4703B"/></linearGradient><radialGradient id="hL"><stop offset="0" stop-color="#C4703B" stop-opacity=".45"/><stop offset="1" stop-color="#C4703B" stop-opacity="0"/></radialGradient></defs><path d="M 34.50 76.85 A 31 31 0 1 1 75.39 32.22" fill="none" stroke="url(#gL)" stroke-width="10" stroke-linecap="round"/><circle cx="75.4" cy="32.2" r="17.5" fill="url(#hL)"/><circle cx="75.4" cy="32.2" r="5.0" fill="#C4703B"/></g>
+  <text x="122" y="63" font-family="Inter,-apple-system,Segoe UI,Roboto,sans-serif"
+        font-size="34" font-weight="300" letter-spacing="-1.1" fill="#191817">brink</text>
+  <circle cx="204" cy="56" r="4.5" fill="#C4703B"/>
+  <text x="216" y="63" font-family="Inter,-apple-system,Segoe UI,Roboto,sans-serif"
+        font-size="34" font-weight="300" letter-spacing="-1.1" fill="#191817">watch</text>
+</svg>

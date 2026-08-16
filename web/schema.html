@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ESCX — общая схема</title>
+<title>brink.watch — общая схема</title>
+<!-- путь от корня: при сборке страница уезжает в site/ -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>
 :root{
   --bg:#0B0C0E; --surface:#131518; --surface-2:#191C20;
@@ -27,6 +29,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 
 .page{max-width:1120px;margin:0 auto;padding:26px 24px 60px}
 header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+/* знак выравнивается по строке заголовка, а не по базовой линии текста */
+.wm{display:flex;align-items:center;gap:11px}
 h1{font-size:19px;font-weight:600;letter-spacing:-.01em}
 .sub{color:var(--text-2);font-size:12px}
 .themeBtn{margin-left:auto;font-size:11px;color:var(--text-2);border:1px solid var(--line);
@@ -108,7 +112,18 @@ footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
 <div class="page">
 
 <header>
-  <h1>ESCX — как это работает целиком</h1>
+  <h1 class="wm"><svg viewBox="0 0 100 100" width="30" height="30" fill="none" aria-hidden="true"><defs>
+      <linearGradient id="gsc" gradientUnits="userSpaceOnUse" x1="34.5" y1="0" x2="75.4" y2="0">
+        <stop offset="0" stop-color="#9AA4AB" stop-opacity=".5"/>
+        <stop offset=".55" stop-color="#E08A45" stop-opacity=".78"/>
+        <stop offset="1" stop-color="#E08A45"/></linearGradient>
+      <radialGradient id="hsc"><stop offset="0" stop-color="#E08A45" stop-opacity=".45"/>
+        <stop offset="1" stop-color="#E08A45" stop-opacity="0"/></radialGradient></defs>
+      <path d="M 34.50 76.85 A 31 31 0 1 1 75.39 32.22" fill="none" stroke="url(#gsc)"
+        stroke-width="10" stroke-linecap="round"/>
+      <circle cx="75.4" cy="32.2" r="17.5" fill="url(#hsc)"/>
+      <circle cx="75.4" cy="32.2" r="5" fill="#E08A45"/></svg>
+    <span>brink.watch — как это работает целиком</span></h1>
   <span class="sub">одна страница · август 2026</span>
   <button class="themeBtn" id="tb">Светлая</button>
 </header>

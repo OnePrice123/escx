@@ -24,12 +24,14 @@ node api/test/test.mjs
 
 # 2. посмотреть дизайн-язык и прототипы — просто открыть в браузере
 open design/styleguide.html     # витрина дизайна, три оттенка
+open brand/logo.html            # знак: варианты, размеры, контексты
 open design/demo.html           # минимальный пример: tokens.css + escx-ui.js
 open web/prototype.html         # кликабельный прототип
 open web/schema.html            # вся система на одной странице
 
 # 3. собрать и посмотреть сайт
-python3 web/build.py --demo
+python3 web/build.py                    # реальные данные или пустое состояние
+python3 web/build.py --demo             # выдуманные числа, ТОЛЬКО для вёрстки
 python3 -m http.server -d site 8000     # http://localhost:8000
 
 # 4. собрать первые данные
@@ -49,6 +51,7 @@ python3 -m escx.cli status
 |---|---|
 | `docs/` | Пять документов. Читать по порядку номеров |
 | `design/` | `tokens.css` и `escx-ui.js` — дизайн-язык в коде. `styleguide.html` — витрина |
+| `brand/` | Знак, логотип, иконки. `logo.html` — витрина, `README.md` — правила |
 | `web/` | `build.py` — сборка статического сайта, `templates/` — шаблон, прототипы |
 | `ingest/` | Сборщик данных: UCDP, GDELT, санкции, GPR + LLM-извлечение |
 | `api/` | Cloudflare Worker: подписки, вход по ссылке, проверка доступа |
@@ -108,9 +111,10 @@ sparkEl.innerHTML  = ESCX.sparkWash(series);
 
 ## Состояние
 
-Проектирование завершено, реализация не начата. Веб-приложения ещё нет — есть прототипы
-и рабочий сборщик данных. Ближайшая задача: перевести `web/prototype.html` на дизайн-язык
-из `design/`.
+Сайт опубликован: **[brink.watch](https://brink.watch/)**. Данных пока нет — показано
+честное пустое состояние: реестр из 20 наблюдаемых пар государств без единого числа.
+
+Ближайшая задача: первый полный прогон пайплайна по UCDP, чтобы появились реальные значения.
 
 Контекст для Claude Code — в `CLAUDE.md`.
 

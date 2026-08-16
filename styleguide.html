@@ -3,10 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ESCX — дизайн-язык «Тепло»</title>
+<title>brink.watch — дизайн-язык «Тепло»</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<!-- путь от корня: при сборке страница уезжает в site/ -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>
 /* ============================================================
    ТЕПЛО — дизайн-язык ESCX
@@ -82,10 +84,10 @@ header{position:sticky;top:0;z-index:40;
   background:color-mix(in srgb,var(--paper) 82%,transparent);
   backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px)}
 .hbar{display:flex;align-items:center;gap:18px;height:66px;flex-wrap:wrap}
-.mark{display:flex;align-items:center;gap:10px;font-size:14px;letter-spacing:.14em;font-weight:500}
-.ember{width:9px;height:9px;border-radius:50%;background:var(--t3);
-  box-shadow:0 0 0 5px color-mix(in srgb,var(--t3) 16%,transparent),
-             0 0 18px color-mix(in srgb,var(--t3) 55%,transparent)}
+/* Написание совпадает с логотипом: строчные, лёгкое начертание, точка-уголёк */
+.mark{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:300;
+  letter-spacing:-.02em;color:var(--ink)}
+.mark .wdot{color:var(--t3)}
 .sp{flex:1}
 .sw{display:flex;gap:4px;align-items:center}
 .sw button{font-size:11.5px;color:var(--ink-3);padding:6px 12px;border-radius:100px;
@@ -208,7 +210,18 @@ footer{padding:60px 0 90px;color:var(--ink-4);font-size:11.5px;line-height:1.8}
 
 <header>
   <div class="shell hbar">
-    <span class="mark"><span class="ember"></span>ESCX</span>
+    <span class="mark"><svg viewBox="0 0 100 100" width="24" height="24" fill="none" aria-hidden="true"><defs>
+      <linearGradient id="gsg" gradientUnits="userSpaceOnUse" x1="34.5" y1="0" x2="75.4" y2="0">
+        <stop offset="0" stop-color="#7E8B92" stop-opacity=".28"/>
+        <stop offset=".55" stop-color="#C4703B" stop-opacity=".72"/>
+        <stop offset="1" stop-color="#C4703B"/></linearGradient>
+      <radialGradient id="hsg"><stop offset="0" stop-color="#C4703B" stop-opacity=".45"/>
+        <stop offset="1" stop-color="#C4703B" stop-opacity="0"/></radialGradient></defs>
+      <path d="M 34.50 76.85 A 31 31 0 1 1 75.39 32.22" fill="none" stroke="url(#gsg)"
+        stroke-width="10" stroke-linecap="round"/>
+      <circle cx="75.4" cy="32.2" r="17.5" fill="url(#hsg)"/>
+      <circle cx="75.4" cy="32.2" r="5" fill="#C4703B"/></svg>
+      <span>brink<span class="wdot">·</span>watch</span></span>
     <span class="sp"></span>
     <div class="sw" role="group" aria-label="Оттенок">
       <button data-tint="sand" aria-pressed="true"><span class="dot-t" style="background:#C4703B"></span>Песок</button>

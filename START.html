@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ESCX — запуск шаг за шагом</title>
+<title>brink.watch — запуск шаг за шагом</title>
+<!-- страница локальная, лежит в корне репозитория -->
+<link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
@@ -65,6 +67,8 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--paper-2);border-r
 pre{font-family:var(--mono);font-size:12.5px;background:var(--paper-2);border-radius:10px;
   padding:12px 14px;margin-top:9px;overflow-x:auto;line-height:1.75;color:var(--ink)}
 a{color:var(--t3)}
+.note{font-size:12.5px;color:var(--ink-2);margin-top:10px;padding-left:11px;
+  border-left:2px solid color-mix(in srgb,var(--t2) 45%,transparent)}
 
 .card{background:var(--paper-2);border-radius:20px;padding:22px 24px;margin-top:22px}
 .card h3{font-size:15px;font-weight:400;letter-spacing:-.01em}
@@ -77,11 +81,26 @@ a{color:var(--t3)}
 footer{margin-top:44px;font-size:12px;color:var(--ink-4);line-height:1.8}
 @media(max-width:560px){.step{grid-template-columns:26px 1fr;gap:10px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.brandline{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:300;
+  letter-spacing:-.02em;color:var(--ink);margin-bottom:26px}
+.brandline .wdot{color:var(--t3)}
 </style>
 </head>
 <body>
 <div class="wrap">
 
+  <div class="brandline"><svg viewBox="0 0 100 100" width="26" height="26" fill="none" aria-hidden="true"><defs>
+      <linearGradient id="gstl" gradientUnits="userSpaceOnUse" x1="34.5" y1="0" x2="75.4" y2="0">
+        <stop offset="0" stop-color="#7E8B92" stop-opacity=".28"/>
+        <stop offset=".55" stop-color="#C4703B" stop-opacity=".72"/>
+        <stop offset="1" stop-color="#C4703B"/></linearGradient>
+      <radialGradient id="hstl"><stop offset="0" stop-color="#C4703B" stop-opacity=".45"/>
+        <stop offset="1" stop-color="#C4703B" stop-opacity="0"/></radialGradient></defs>
+      <path d="M 34.50 76.85 A 31 31 0 1 1 75.39 32.22" fill="none" stroke="url(#gstl)"
+        stroke-width="10" stroke-linecap="round"/>
+      <circle cx="75.4" cy="32.2" r="17.5" fill="url(#hstl)"/>
+      <circle cx="75.4" cy="32.2" r="5" fill="#C4703B"/></svg>
+    <span>brink<span class="wdot">·</span>watch</span></div>
   <div class="micro">Запуск</div>
   <h1>Каждый шаг<br>по порядку<em>.</em></h1>
   <p class="lede">
@@ -129,9 +148,10 @@ footer{margin-top:44px;font-size:12px;color:var(--ink-4);line-height:1.8}
     </div></div>
 
     <div class="step" data-step><div class="tick"><span>6</span></div><div class="b">
-      <div class="t">На странице репозитория открыть вкладку <kbd>Actions</kbd> и нажать зелёную кнопку <kbd>I understand my workflows, go ahead and enable them</kbd>.</div>
+      <div class="t">Открыть вкладку <kbd>Actions</kbd> и убедиться, что слева есть список: <b>deploy, daily, pull-gdelt, tests</b>.</div>
       <div class="where">github.com → ваш репозиторий → вкладка Actions</div>
-      <div class="res">список рабочих процессов: deploy, daily, hourly, tests</div>
+      <div class="res">список процессов виден — значит всё уже включено, нажимать ничего не надо</div>
+      <div class="warn">Зелёная кнопка «I understand my workflows» появляется только у форков чужих репозиториев. У своего собственного её нет и быть не должно. Если список пуст — Settings → Actions → General → выбрать «Allow all actions».</div>
     </div></div>
   </div>
 
@@ -152,8 +172,12 @@ footer{margin-top:44px;font-size:12px;color:var(--ink-4);line-height:1.8}
     </div></div>
 
     <div class="step" data-step><div class="tick"><span>9</span></div><div class="b">
-      <div class="t">Нажать <kbd>Create</kbd> → перейти на вкладку <kbd>Pages</kbd> → <kbd>Connect to Git</kbd>.</div>
-      <div class="warn">Вкладка <b>Pages</b>, а не Workers. Их легко перепутать — Workers предлагается первым.</div>
+      <div class="t">Нажать <kbd>Create</kbd> → <b>переключиться на вкладку</b> <kbd>Pages</kbd> → <kbd>Connect to Git</kbd>.</div>
+      <div class="warn"><b>Самая частая ошибка во всей инструкции.</b> Cloudflare открывает вкладку Workers первой,
+      и она выглядит как единственный вариант. Worker — это программа, обрабатывающая запросы; сайт он показывать
+      не умеет. Проверить, что попали куда надо, можно по адресной строке: у Pages в ней есть <code>/pages/</code>,
+      у Worker — <code>/workers/services/</code>. Если увидели вкладки Bindings и Observability и метрику
+      «Invocations» — это Worker, вернитесь и выберите Pages.</div>
     </div></div>
 
     <div class="step" data-step><div class="tick"><span>10</span></div><div class="b">
@@ -298,6 +322,79 @@ bash setup.sh</pre>
   <hr class="fade">
 
   <div class="card">
+    <h3>Как обновить сайт после изменений</h3>
+    <p><b>Сначала выясните, какого типа ваш проект Pages.</b> От этого зависит всё остальное,
+    и именно здесь чаще всего теряют время: файлы на GitHub поменялись, а сайт остался прежним.</p>
+
+    <p>Cloudflare → <b>Compute (Workers &amp; Pages)</b> → ваш проект → вкладка <b>Deployments</b>.
+    Посмотрите на строку последней сборки:</p>
+
+    <div class="qa" style="margin-top:10px">
+      <div class="q">Написано <code>Direct Upload</code></div>
+      <div class="a">Проект живёт загруженным архивом и <b>про GitHub ничего не знает</b>. Сколько
+      ни меняйте файлы в репозитории, сайт не изменится — это не поломка, так устроен этот тип
+      проекта. Два выхода — ниже.</div>
+    </div>
+    <div class="qa">
+      <div class="q">Написана ветка и номер коммита (<code>main · a1b2c3d</code>)</div>
+      <div class="a">Проект связан с GitHub и пересобирается сам. Если сайт всё равно старый —
+      смотрите «Сборка прошла, а сайт прежний» ниже.</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Ветка в строке сборки — не та, в которую вы пушите</div>
+      <div class="a">Cloudflare следит ровно за одной веткой. По умолчанию он ставит
+      <code>main</code>, а в вашем репозитории ветка называется <code>master</code> —
+      тогда пуш проходит, а сборка не запускается вообще. Лечится в
+      <b>Settings</b> → <b>Builds</b> → <b>Production branch</b>: поставить <code>master</code>.
+      Проверить имя ветки можно на GitHub — оно написано на кнопке-переключателе
+      слева над списком файлов.</div>
+    </div>
+
+    <p style="margin-top:18px"><b>Выход 1 — связать проект с GitHub раз и навсегда.</b>
+    Рекомендуется: дальше достаточно будет менять файлы в репозитории.</p>
+    <p>В проекте: <b>Settings</b> → <b>Builds</b> → <b>Connect to Git</b> → выбрать репозиторий.
+    Затем заполнить настройки сборки ровно так:</p>
+    <pre>Production branch          master        &lt;- как называется ветка в репозитории
+Build command              python3 web/build.py
+Build output directory     site
+Root directory             (оставить пустым)</pre>
+    <p>И переменную окружения: <b>Settings</b> → <b>Variables and Secrets</b> →
+    <code>PYTHON_VERSION</code> = <code>3.11</code>. Без неё сборка упадёт.
+    После этого — <b>Deployments</b> → <b>Retry deployment</b>, и через минуту-две сайт обновится.</p>
+    <p class="note">Если команда сборки не задана, а <b>Build output directory</b> оставлен
+    пустым, Cloudflare публикует корень репозитория как есть. Это тоже рабочая схема — при
+    ней собранные файлы (<code>index.html</code>, папка <code>data/</code>, иконки) должны
+    лежать в корне репозитория. Положить их туда: <code>python3 web/build.py --to-root</code>.</p>
+
+    <p style="margin-top:18px"><b>Выход 2 — загрузить новый архив руками.</b> Быстрее один раз,
+    но повторять придётся при каждом изменении.</p>
+    <p>Соберите папку: <code>python3 web/build.py</code>, упакуйте <b>содержимое</b> папки
+    <code>site/</code> (не саму папку) в zip. Затем: проект → <b>Deployments</b> →
+    <b>Create deployment</b> → перетащить архив → <b>Deploy</b>.</p>
+    <p class="note">Кнопки <b>Create deployment</b> нет, если проект связан с Git: у таких
+    проектов деплой создаётся только пушем. Это признак, по которому тип проекта видно
+    и без вкладки Deployments.</p>
+
+    <div class="qa" style="margin-top:18px">
+      <div class="q">Домен открывает старый сайт, а новый — только на <code>*.pages.dev</code></div>
+      <div class="a">Домен привязан к <b>другому проекту</b>. Один домен может принадлежать
+      только одному проекту сразу. Откройте каждый проект → <b>Custom domains</b> и найдите,
+      в каком из них числится <code>brink.watch</code>. Обновлять надо именно его —
+      либо снять домен там и добавить в нужном.</div>
+    </div>
+    <div class="qa">
+      <div class="q">Сборка прошла, а сайт прежний</div>
+      <div class="a">Сначала проверьте, что сборка действительно <b>Success</b>, а не
+      <b>Failed</b>: при неудаче Cloudflare оставляет в эфире прошлую удачную версию, и внешне
+      это выглядит как «ничего не произошло». Если Success — обновите страницу с
+      <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>
+      на Mac): браузер держит копию. Не помогло — Cloudflare → домен →
+      <b>Caching</b> → <b>Configuration</b> → <b>Purge Everything</b>.</div>
+    </div>
+  </div>
+
+  <div class="card">
     <h3>Если пошло не так</h3>
     <div class="qa" style="margin-top:10px">
       <div class="q">Сборка упала с ошибкой про Python</div>
@@ -312,6 +409,12 @@ bash setup.sh</pre>
       <div class="a">Серверы имён у Google прописаны с опечаткой или не сохранились. Откройте домен в Google Cloud Domains → DNS и сверьте обе строки посимвольно с тем, что показывает Cloudflare.</div>
     </div>
     <div class="qa">
+      <div class="q">Создал проект, а вместо сайта — вкладки Bindings, Observability и «Latest build failed»</div>
+      <div class="a">Это Worker, а не Pages: их легко перепутать на шаге 9. Worker сайт показывать не умеет.
+      Создайте заново через <b>Create → вкладка Pages</b>, дав другое имя проекта, чтобы не конфликтовало
+      со старым. Ненужный Worker удаляется в <b>Settings → Delete</b>.</div>
+    </div>
+    <div class="qa">
       <div class="q">Вкладка Actions пустая</div>
       <div class="a">Не нажата зелёная кнопка включения (шаг 6). Без неё робот не запустится, но на работу сайта это не влияет.</div>
     </div>
@@ -319,6 +422,39 @@ bash setup.sh</pre>
       <div class="q">Cloudflare не даёт добавить домен на шаге 15</div>
       <div class="a">Бывает, пока домен не зарегистрирован. Тогда в форме Google включите <b>Cloud DNS</b>, завершите покупку, а потом вернитесь к шагам 15–19: серверы имён меняются в любой момент после регистрации.</div>
     </div>
+  </div>
+
+  <div class="card">
+    <h3>Быстрый путь: без GitHub, загрузкой архива</h3>
+    <p>Если хочется увидеть сайт живым прямо сейчас, блоки А и Б можно пропустить.
+    Возьмите готовый архив <code>escx-site.zip</code> и загрузите его напрямую:</p>
+    <p><b>Compute (Workers &amp; Pages)</b> → <b>Create</b> → вкладка <b>Pages</b> →
+    <b>Upload assets</b> → имя проекта → перетащить архив <b>не распаковывая</b> → <b>Deploy site</b>.</p>
+    <p>Минус один: обновляться сам такой сайт не будет, для изменений надо загружать архив заново.
+    Подключить GitHub можно позже — <b>Settings → Builds → Connect to Git</b>, адрес при этом не меняется.</p>
+    <p>Собрать архив самому: <code>python3 web/build.py --demo</code>, затем упаковать содержимое папки
+    <code>site/</code> — именно содержимое, а не саму папку.</p>
+  </div>
+
+  <div class="card">
+    <h3>Публичный репозиторий — не страшно, но выбор за вами</h3>
+    <p>Да, публичный репозиторий видят все, и код может скопировать кто угодно.
+    Но <b>код здесь — не то, что вас защищает</b>: это пара тысяч строк простого Python
+    и JavaScript, грамотный разработчик повторит их за две недели.</p>
+    <p>Защищает другое: журнал калибровки, который копится полтора года и не копируется
+    в принципе; выверенный вручную реестр диад; домен, имя и аудитория; и просто то,
+    что вы делаете это каждый день, а копирующий — нет.</p>
+    <p>Больше того: <b>открытая методология и есть главный аргумент продукта.</b>
+    У RANE и Verisk она закрыта — именно поэтому им нельзя задать вопрос «а почему 79?».
+    Спрятав свою, вы теряете то, чем отличаетесь.</p>
+    <p><b>Если всё равно некомфортно</b> — делайте приватным, это рабочий вариант.
+    Cloudflare Pages подключается к приватным репозиториям без проблем. Цена: 2000 минут
+    Actions в месяц вместо безлимита, поэтому в <code>.github/workflows/hourly.yml</code>
+    надо поменять расписание на <code>"7 */3 * * *"</code> — раз в три часа вместо часа.
+    На точность это почти не влияет: горизонты у нас месячные.</p>
+    <p><b>Разумный компромисс:</b> код приватный, а папку <code>docs/</code> — методологию —
+    выложить отдельно или просто страницей на сайте. Тогда и проверяемость на месте,
+    и внутренности закрыты.</p>
   </div>
 
   <div class="card">

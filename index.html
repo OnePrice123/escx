@@ -10,6 +10,14 @@
 <meta property="og:description" content="Фаза, накал и темп для каждой пары государств. Открытые данные, публичная методология.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://brink.watch/">
+<meta property="og:image" content="https://brink.watch/og-cover.png">
+<meta name="twitter:card" content="summary_large_image">
+<!-- SVG-иконку понимают Chrome, Firefox и Safari 17+; PNG оставлен для всех
+     остальных. apple-touch-icon обязан быть растровым и непрозрачным. -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="theme-color" content="#FBFAF7">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +27,11 @@
     background:color-mix(in srgb,var(--paper) 82%,transparent);
     backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px)}
   .hbar{display:flex;align-items:center;gap:16px;height:64px;flex-wrap:wrap}
-  .mark{display:flex;align-items:center;gap:10px;letter-spacing:.14em;font-weight:500}
+  /* Написание совпадает с логотипом: строчные, лёгкое начертание, точка-уголёк.
+     Прописные с разрядкой выглядели как второй, отдельный бренд. */
+  .mark{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:300;
+    letter-spacing:-.02em;color:var(--ink);text-decoration:none}
+  .mark .wdot{color:var(--t3)}
   .sp{flex:1}
   .banner{font-size:12px;color:var(--ink-2);padding:10px 0}
   .banner b{color:var(--ink);font-weight:600}
@@ -60,7 +72,19 @@
 <body>
 
 <header><div class="shell hbar">
-  <span class="mark"><span class="ember"></span>BRINK.WATCH</span>
+  <a class="mark" href="/" aria-label="brink.watch — на главную">
+    <svg viewBox="0 0 100 100" width="24" height="24" fill="none" aria-hidden="true"><defs>
+      <linearGradient id="hg" gradientUnits="userSpaceOnUse" x1="34.5" y1="0" x2="75.4" y2="0">
+        <stop offset="0" stop-color="#7E8B92" stop-opacity=".28"/>
+        <stop offset=".55" stop-color="#C4703B" stop-opacity=".72"/>
+        <stop offset="1" stop-color="#C4703B"/></linearGradient>
+      <radialGradient id="hh"><stop offset="0" stop-color="#C4703B" stop-opacity=".45"/>
+        <stop offset="1" stop-color="#C4703B" stop-opacity="0"/></radialGradient></defs>
+      <path d="M 34.50 76.85 A 31 31 0 1 1 75.39 32.22" fill="none" stroke="url(#hg)"
+        stroke-width="10" stroke-linecap="round"/>
+      <circle cx="75.4" cy="32.2" r="17.5" fill="url(#hh)"/>
+      <circle cx="75.4" cy="32.2" r="5" fill="#C4703B"/></svg>
+    <span>brink<span class="wdot">·</span>watch</span></a>
   <span class="sp"></span>
   <button class="pill is-on" data-tint="sand">Песок</button>
   <button class="pill" data-tint="ash">Пепел</button>

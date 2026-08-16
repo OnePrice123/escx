@@ -1,14 +1,16 @@
 # ============================================================================
 # ESCX API — Cloudflare Worker
 #
-# account_id — не секрет. Он штатно лежит в конфиге и попадает в репозиторий;
-# сам по себе доступа не даёт. Настоящие секреты кладутся отдельной командой
-# (wrangler secret put) и в файлы не пишутся никогда.
+# account_id намеренно не задан: у вас несколько аккаунтов Cloudflare, и жёстко
+# вписанный идентификатор приведёт к развёртыванию не туда. wrangler определит
+# аккаунт сам после входа, а при нескольких — спросит, в какой публиковать.
+#
+# Если захотите зафиксировать: account_id = "..." из адресной строки панели,
+# это не секрет. Настоящие секреты кладутся только через wrangler secret put.
 # ============================================================================
-name = "escx-api"
+name = "escx-api"   # имя Worker; сайт живёт отдельно, в проекте Pages
 main = "src/index.js"
 compatibility_date = "2026-08-01"
-account_id = "d3d70fb7f77e675557953e99450b7574"
 
 # Бесплатный адрес вида escx-api.<ваш-поддомен>.workers.dev.
 # Работает сразу, домен для запуска не нужен.
@@ -20,16 +22,15 @@ database_name = "escx"
 database_id = "ЗАПОЛНИТ_setup.sh"
 
 [vars]
-# Пока домена нет — сюда идёт адрес сайта на Pages.
-# Появится свой домен: заменить здесь и раскомментировать routes ниже.
-SITE_URL = "https://escx.pages.dev"
+# Адрес сайта. Worker ходит на него за витриной и делает редирект после входа.
+SITE_URL = "https://brink.watch"
 PROVIDER = "paddle"                    # paddle | stripe
-MAIL_FROM = "no-reply@escx.pages.dev"
+MAIL_FROM = "no-reply@brink.watch"
 
-# Раскомментировать, когда домен будет подключён к Cloudflare:
-# routes = [
-#   { pattern = "brink.watch/api/*", zone_name = "brink.watch" }
-# ]
+# Домен подключён — маршрут активен.
+routes = [
+  { pattern = "brink.watch/api/*", zone_name = "brink.watch" }
+]
 
 # Секреты — только так, в файл не попадают:
 #   wrangler secret put PADDLE_WEBHOOK_SECRET

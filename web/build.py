@@ -6,9 +6,15 @@
 выгружает результат в несколько JSON-файлов, и получается папка со статикой —
 её отдаёт любой бесплатный хостинг без сервера, без базы и без бэкенда.
 
-    python3 web/build.py                 # соберёт site/ из ingest/escx.db
-    python3 web/build.py --demo          # соберёт на демо-данных (базы может не быть)
+    python3 web/build.py                 # site/ из ingest/escx.db
+    python3 web/build.py --demo          # site/ с выдуманными числами — ТОЛЬКО для работы над дизайном
     python3 -m http.server -d site 8000  # посмотреть локально
+
+ВАЖНО про --demo. Публиковать выдуманные числа под реальными названиями стран нельзя:
+человек увидит «Россия — Украина: 91» и решит, что это измерение. Поэтому без базы
+собирается не демо, а честное пустое состояние: реестр диад без единой цифры и прямая
+подпись, что индекс ещё не рассчитан. Флаг --demo существует только для локальной
+работы над вёрсткой и в деплой не попадает.
 
 Зависимостей нет: только стандартная библиотека.
 """
@@ -55,9 +61,38 @@ def from_db(path: Path) -> dict | None:
     return {"dyads": [dict(r) for r in rows], "source": "db"}
 
 
+def registry_state() -> dict:
+    """Честное пустое состояние: реестр диад без единого числа.
+
+    Собирается, когда базы ещё нет. Показывает, ЧТО продукт наблюдает, и прямо
+    говорит, что значения не рассчитаны. Это и честно, и информативно: посетитель
+    видит охват, а не правдоподобную выдумку.
+    """
+    reg = json.loads((ROOT / "ingest" / "config" / "dyads.json").read_text(encoding="utf-8"))
+    dyads = [{
+        "dyad_id": d["dyad_id"],
+        "name": d.get("name", d["dyad_id"]),
+        "region": d.get("region", ""),
+        "disputed": d.get("disputed", ""),
+        "since": d.get("since"),
+        "phase": None, "phase_name": None,
+        "h_abs": None, "h_rel": None,
+        "delta_7": None, "delta_30": None,
+        "tempo": None, "tempo_name": None,
+        "data_coverage": 0, "series_90d": [],
+    } for d in reg if d.get("status") == "active"]
+    dyads.sort(key=lambda x: x["name"])
+    return {
+        "dyads": dyads,
+        "source": "registry",
+        "global": None,
+        "registry_total": len(reg),
+        "dormant": [d.get("name", d["dyad_id"]) for d in reg if d.get("status") == "dormant"],
+    }
+
+
 def demo() -> dict:
-    """Демо-витрина. Нужна, чтобы сайт собирался и деплоился с первого дня,
-    пока пайплайн ещё не наполнил базу. Все числа помечены как демонстрационные."""
+    """Выдуманные числа для локальной работы над вёрсткой. В деплой не идут."""
     raw = [
         ("A-24", "Ограниченный конфликт", 4, 79, 97, 34, 26, "spike",  64, 2.9),
         ("A-03", "Ограниченный конфликт", 4, 83, 91, 30, 22, "spike",  76, 5.4),
@@ -124,11 +159,14 @@ def _walk(seed: int, n: int, end: float, drift: float) -> list[int]:
 # Сборка
 # --------------------------------------------------------------------------
 def build(demo_mode: bool = False) -> dict:
-    data = None if demo_mode else from_db(DB)
-    if data is None:
-        if not demo_mode:
-            print("  база пуста или отсутствует — собираю на демо-данных", file=sys.stderr)
+    if demo_mode:
         data = demo()
+    else:
+        data = from_db(DB)
+        if data is None:
+            print("  база пуста или отсутствует — собираю честное пустое состояние",
+                  file=sys.stderr)
+            data = registry_state()
 
     if SITE.exists():
         shutil.rmtree(SITE)
@@ -138,6 +176,18 @@ def build(demo_mode: bool = False) -> dict:
     # дизайн-система как есть
     for f in ("tokens.css", "escx-ui.js"):
         shutil.copy2(ROOT / "design" / f, SITE / "design" / f)
+
+    # Фирменные файлы кладём в корень, а не в подпапку: браузеры и мессенджеры
+    # ходят за иконками по угаданным путям, и корень — единственный, который
+    # угадывают все. Растровые иконки собираются brand/rasterize.py и лежат
+    # в репозитории готовыми: на сборочной машине браузера нет.
+    for f in ("favicon.svg", "icon-32.png", "icon-180.png", "icon-512.png",
+              "og-cover.png", "logo.svg", "mark.svg"):
+        p = ROOT / "brand" / f
+        if p.exists():
+            shutil.copy2(p, SITE / f)
+        else:
+            print(f"  нет brand/{f} — соберите: python3 brand/rasterize.py", file=sys.stderr)
 
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     payload = {**data, "built_at": stamp, "method_version": "0.3.1"}
@@ -171,10 +221,40 @@ def build(demo_mode: bool = False) -> dict:
     return {"files": n, "bytes": size, "dyads": len(data["dyads"]), "source": data["source"]}
 
 
+def copy_to_root() -> int:
+    """Разложить собранный сайт по корню репозитория.
+
+    Зачем это нужно: проект на Cloudflare Pages настроен без команды сборки —
+    он просто отдаёт корень репозитория как есть. Значит, собранные файлы
+    обязаны в этом корне лежать, иначе push ничего не меняет.
+
+    Правильнее было бы задать команду сборки и папку site, и тогда эта функция
+    не нужна. Но пока настройки такие — держим оба варианта рабочими: site/
+    для нормального деплоя, корень для текущего.
+    """
+    n = 0
+    for src in SITE.rglob("*"):
+        if src.is_dir():
+            continue
+        dst = ROOT / src.relative_to(SITE)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        n += 1
+    return n
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Сборка статического сайта ESCX")
-    ap.add_argument("--demo", action="store_true", help="собрать на демо-данных")
+    ap.add_argument("--demo", action="store_true",
+                    help="выдуманные числа для работы над вёрсткой; публиковать нельзя")
+    ap.add_argument("--to-root", action="store_true",
+                    help="дополнительно разложить собранный сайт по корню репозитория")
     a = ap.parse_args()
     r = build(a.demo)
     print(f"site/ собран: {r['files']} файлов, {r['bytes']/1024:.0f} КБ, "
           f"диад {r['dyads']}, источник — {r['source']}")
+    if a.to_root:
+        if a.demo:
+            sys.exit("--to-root и --demo вместе запрещены: выдуманные числа "
+                     "оказались бы в репозитории и уехали на публичный сайт")
+        print(f"в корень репозитория скопировано файлов: {copy_to_root()}")

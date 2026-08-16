@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru" data-tint="sand">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>brink.watch — знак</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+:root{
+  --paper:#FCFBF8; --paper-2:#F6F4EE; --paper-3:#EFEBE2;
+  --ink:#191817; --ink-2:#6E6A62; --ink-3:#A7A299; --ink-4:#C9C4B9;
+  --cold:#7E8B92; --warm:#C4703B;
+  --sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+body.gray{filter:saturate(0)}
+.wrap{max-width:900px;margin:0 auto;padding:56px clamp(20px,5vw,44px) 110px}
+.micro{font-size:10px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
+h1{font-size:clamp(30px,5vw,44px);font-weight:200;letter-spacing:-.038em;line-height:1.12;margin-top:14px}
+h1 em{font-style:normal;color:var(--warm)}
+.lede{font-size:16px;color:var(--ink-2);font-weight:300;margin-top:20px;line-height:1.78;max-width:56ch}
+.fade{height:1px;border:0;margin:52px 0;background:linear-gradient(90deg,transparent,
+  color-mix(in srgb,var(--ink) 11%,transparent) 22% 62%,transparent)}
+h2{font-size:20px;font-weight:300;letter-spacing:-.02em}
+.note{font-size:13px;color:var(--ink-3);line-height:1.72;margin-top:10px;max-width:62ch}
+p.body{font-size:14px;color:var(--ink-2);margin-top:12px;max-width:62ch;line-height:1.75}
+p.body b{color:var(--ink);font-weight:500}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+.pill{font-size:11.5px;color:var(--ink-3);padding:6px 12px;border-radius:100px;transition:.2s}
+.pill:hover{color:var(--ink-2)}.pill.on{color:var(--ink);background:var(--paper-3)}
+
+.hero{display:grid;grid-template-columns:200px 1fr;gap:44px;align-items:center;margin-top:40px}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px}
+.opt{background:var(--paper-2);border-radius:22px;padding:26px 22px;text-align:center;
+  cursor:pointer;transition:background .25s}
+.opt:hover{background:var(--paper-3)}
+.opt.pick{background:var(--paper-3);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--warm) 55%,transparent)}
+.opt svg{width:88px;height:88px}
+.opt .n{font-size:13.5px;margin-top:14px}
+.opt .d{font-size:11.5px;color:var(--ink-3);margin-top:5px;line-height:1.55}
+.opt .tag{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--warm);
+  font-weight:600;margin-top:9px;opacity:0}
+.opt.pick .tag{opacity:1}
+
+.sizes{display:flex;align-items:flex-end;gap:34px;flex-wrap:wrap;margin-top:24px}
+.sz{text-align:center}
+.sz .cap{font-size:10.5px;color:var(--ink-4);margin-top:9px;font-family:var(--mono)}
+.ctx{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-top:24px}
+.ctxbox{border-radius:20px;padding:22px;display:flex;align-items:center;gap:12px}
+.ctxbox .lbl{font-size:11px;color:var(--ink-3);margin-top:12px}
+.dark{background:#14151A}
+.dark .wm{color:#F2F1EE}
+.wm{display:flex;align-items:center;gap:11px;font-size:16px;letter-spacing:.02em;font-weight:400}
+.tab{display:flex;align-items:center;gap:9px;background:var(--paper);border-radius:9px 9px 0 0;
+  padding:9px 14px;font-size:12.5px;color:var(--ink-2);box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.files{display:grid;grid-template-columns:auto 1fr;gap:10px 22px;margin-top:22px;font-size:13.5px}
+.files code{font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+.files span{color:var(--ink-2)}
+footer{margin-top:56px;font-size:12px;color:var(--ink-4);line-height:1.8}
+@media(max-width:720px){.hero{grid-template-columns:1fr;gap:26px}.opts{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="micro">Фирменный знак</div>
+  <h1>Знак не придуман отдельно.<br>Он <em>взят из продукта</em>.</h1>
+  <p class="lede">
+    Главный визуальный элемент интерфейса — дуга, которая разгорается к текущему значению
+    и заканчивается угольком. Логотип это она же, сведённая к минимуму: ничего нового
+    запоминать не нужно, знак и шкала — одна форма.
+  </p>
+
+  <div class="hero">
+    <div id="heroMark"></div>
+    <div>
+      <h2>Дуга и уголёк</h2>
+      <p class="body">
+        Дуга начинается почти невидимой и разгорается к концу — тот же приём, что во всём
+        интерфейсе: <b>структуру держит не линия, а свет</b>. Разрыв внизу оставлен намеренно:
+        шкала не замкнута, движение не закончено.
+      </p>
+      <p class="body">
+        Уголёк на конце — точка, к которой всё идёт. Он же ставится вместо точки
+        в написании <b>brink·watch</b>, так что знак и слово оказываются одним объектом.
+      </p>
+    </div>
+  </div>
+
+  <hr class="fade">
+
+  <div class="micro">Три варианта — выберите</div>
+  <h2 style="margin-top:12px">Форма одна, отличаются углы</h2>
+  <p class="note">Нажмите на любой — он подставится наверх и в примеры ниже.</p>
+  <div class="opts" id="opts"></div>
+
+  <hr class="fade">
+
+  <div class="micro">Мелкий размер</div>
+  <h2 style="margin-top:12px">Что происходит на 16 пикселях</h2>
+  <p class="note">
+    Мелкая версия — не уменьшенная большая. Убрать градиент и свечение мало: тонкая
+    дуга на 16 пикселях превращается в еле заметный крючок. Поэтому радиус меньше,
+    а штрих вдвое шире — знак занимает всю площадь. Силуэт при этом тот же.
+  </p>
+  <div class="sizes" id="sizes"></div>
+
+  <hr class="fade">
+
+  <div class="micro">В деле</div>
+  <h2 style="margin-top:12px">Как выглядит вокруг</h2>
+  <div class="ctx" id="ctx"></div>
+
+  <hr class="fade">
+
+  <div class="micro">Проверка</div>
+  <h2 style="margin-top:12px">Без цвета обязан читаться</h2>
+  <p class="note">
+    То же правило, что и для всего продукта: цвет — усилитель, а не носитель смысла.
+    Знак опознаётся по форме, а не по тому, что он оранжевый.
+  </p>
+  <div style="margin-top:20px">
+    <button class="pill" id="gray">Убрать цвет</button>
+  </div>
+
+  <hr class="fade">
+
+  <div class="micro">Файлы</div>
+  <h2 style="margin-top:12px">Что лежит в папке brand</h2>
+  <div class="files">
+    <code>logo.svg</code><span>знак со словом — для шапки, презентаций, писем</span>
+    <code>mark.svg</code><span>только знак, полноцветный</span>
+    <code>mark-dark.svg</code><span>для тёмного фона: пепельный конец осветлён, иначе тонет</span>
+    <code>mark-mono.svg</code><span>одноцветный, наследует цвет текста — печать, штампы</span>
+    <code>favicon.svg</code><span>вкладка браузера, утолщённый силуэт</span>
+    <code>icon-32/180/512.png</code><span>браузеры без SVG-иконок, iOS, домашний экран</span>
+    <code>og-cover.png</code><span>превью ссылки в мессенджерах и соцсетях</span>
+    <code>make_logo.py</code><span>генератор: меняете углы — пересобираются все файлы разом</span>
+    <code>rasterize.py</code><span>PNG из этих же SVG; нужен браузер, потому вынесен отдельно</span>
+  </div>
+  <p class="note">
+    Векторные файлы весят меньше килобайта. Растр нужен ровно в двух местах, где
+    SVG не принимают: иконка на домашнем экране и карточка ссылки в соцсетях.
+    Он собирается из тех же SVG и лежит в репозитории готовым — на сборочной
+    машине браузера нет.
+  </p>
+
+  <footer>
+    brink.watch · знак версии 1 · август 2026<br>
+    Цвета из палитры «Тепло»: пепел <code>#7E8B92</code>, глина <code>#C4703B</code>.
+  </footer>
+</div>
+
+<script>
+const COLD = '#7E8B92', WARM = '#C4703B';
+const CX = 50, CY = 50;
+const polar = (r, d) => { const a = (d - 90) * Math.PI / 180;
+  return [CX + r * Math.cos(a), CY + r * Math.sin(a)]; };
+const arcPath = (r, a0, a1) => {
+  const [x0, y0] = polar(r, a0), [x1, y1] = polar(r, a1);
+  return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${(a1 - a0) > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+};
+// dark: на тёмном фоне холодный конец дуги сливается с фоном и от знака остаётся
+// оранжевый огрызок. Поэтому пепельный конец осветляется, а тёплый чуть поднимается.
+function mark(a0, a1, {r = 31, sw = 10, uid = 'a', grad = true, halo = true, color = null, dark = false} = {}) {
+  const cold = dark ? '#B9BEC4' : COLD, warm = dark ? '#E08A45' : WARM;
+  const [ex, ey] = polar(r, a1), solid = color || warm;
+  let defs = '';
+  if (grad) {
+    const [gx0] = polar(r, a0);
+    defs += `<linearGradient id="g${uid}" gradientUnits="userSpaceOnUse" x1="${gx0.toFixed(1)}" y1="0" x2="${ex.toFixed(1)}" y2="0">
+      <stop offset="0" stop-color="${cold}" stop-opacity="${dark ? '.34' : '.28'}"/>
+      <stop offset=".55" stop-color="${warm}" stop-opacity="${dark ? '.78' : '.72'}"/>
+      <stop offset="1" stop-color="${warm}"/></linearGradient>`;
+  }
+  if (halo) defs += `<radialGradient id="h${uid}"><stop offset="0" stop-color="${warm}" stop-opacity="${dark ? '.5' : '.45'}"/>
+      <stop offset="1" stop-color="${warm}" stop-opacity="0"/></radialGradient>`;
+  return `<defs>${defs}</defs>
+    <path d="${arcPath(r, a0, a1)}" fill="none" stroke="${grad ? `url(#g${uid})` : solid}"
+      stroke-width="${sw}" stroke-linecap="round"/>
+    ${halo ? `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${(sw * 1.75).toFixed(1)}" fill="url(#h${uid})"/>` : ''}
+    <circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${(sw / 2).toFixed(1)}" fill="${solid}"/>`;
+}
+const svg = (inner, size) => `<svg viewBox="0 0 100 100" width="${size}" height="${size}" fill="none">${inner}</svg>`;
+
+const VARIANTS = {
+  open:  {a0: -150, a1: 55,  r: 31, sw: 10, n: 'Разомкнутая дуга',
+          d: 'Разрыв внизу: шкала не замкнута, движение не закончено'},
+  ring:  {a0: -170, a1: 150, r: 31, sw: 9,  n: 'Кольцо с разрывом',
+          d: 'Почти сомкнуто — «на грани замыкания»'},
+  short: {a0: -60,  a1: 60,  r: 32, sw: 11, n: 'Короткий сегмент',
+          d: 'Минимум: только намёк на шкалу'},
+};
+let pick = 'open';
+
+function draw() {
+  const v = VARIANTS[pick];
+  document.getElementById('heroMark').innerHTML = svg(mark(v.a0, v.a1, {...v, uid: 'hero'}), 180);
+
+  document.getElementById('opts').innerHTML = Object.entries(VARIANTS).map(([k, o]) => `
+    <div class="opt ${k === pick ? 'pick' : ''}" data-k="${k}">
+      ${svg(mark(o.a0, o.a1, {...o, uid: 'o' + k}), 88)}
+      <div class="n">${o.n}</div><div class="d">${o.d}</div>
+      <div class="tag">выбрано</div>
+    </div>`).join('');
+  document.querySelectorAll('.opt').forEach(el => el.onclick = () => { pick = el.dataset.k; draw(); });
+
+  document.getElementById('sizes').innerHTML = [128, 64, 32, 16].map(s => `
+    <div class="sz">
+      ${svg(s <= 32
+        ? mark(v.a0, v.a1, {r: 26, sw: 20, uid: 's' + s, grad: false, halo: false})
+        : mark(v.a0, v.a1, {...v, uid: 's' + s}), s)}
+      <div class="cap">${s}px</div>
+    </div>`).join('');
+
+  // uid у двух блоков разный намеренно: одинаковые id градиентов на одной странице
+  // склеиваются, и второй знак начинает рисоваться заливкой первого.
+  const wm = (id, dark) => `<span class="wm">${svg(mark(v.a0, v.a1, {...v, uid: id, dark}), 26)}
+      <span>brink<span style="color:${dark ? '#E08A45' : WARM}">·</span>watch</span></span>`;
+  document.getElementById('ctx').innerHTML = `
+    <div><div class="ctxbox" style="background:var(--paper-2)">${wm('wlight', false)}</div>
+      <div class="lbl">шапка сайта</div></div>
+    <div><div class="ctxbox dark">${wm('wdark', true)}</div>
+      <div class="lbl">на тёмном</div></div>
+    <div><div class="ctxbox" style="background:var(--paper-2);padding-top:34px;align-items:flex-end">
+      <div class="tab">${svg(mark(v.a0, v.a1, {r: 26, sw: 20, uid: 'tab', grad: false, halo: false}), 15)}
+        brink.watch — индекс эскалации</div></div>
+      <div class="lbl">вкладка браузера</div></div>`;
+}
+draw();
+const g = document.getElementById('gray');
+g.onclick = () => { document.body.classList.toggle('gray');
+  g.classList.toggle('on', document.body.classList.contains('gray'));
+  g.textContent = document.body.classList.contains('gray') ? 'Вернуть цвет' : 'Убрать цвет'; };
+</script>
+</body>
+</html>

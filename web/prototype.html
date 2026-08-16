@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ESCX — Escalation Index · прототип</title>
+<title>brink.watch — прототип</title>
+<!-- страница локальная, в site/ не едет — путь относительный -->
+<link rel="icon" href="../brand/favicon.svg" type="image/svg+xml">
 <style>
 :root{
   --bg:#0B0C0E; --surface:#131518; --surface-2:#191C20;
@@ -35,7 +37,9 @@ a{color:inherit}
 .wrap{max-width:1100px;margin:0 auto;padding:0 24px}
 header{border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:20}
 .hbar{display:flex;align-items:center;gap:20px;height:56px}
-.logo{font-weight:600;font-size:14px;letter-spacing:.06em;white-space:nowrap}
+.logo{display:flex;align-items:center;gap:8px;font-weight:300;font-size:17px;
+  letter-spacing:-.02em;white-space:nowrap}
+.logo .wdot{color:#E08A45}
 .demo{
   font-size:10px;font-weight:600;letter-spacing:.1em;padding:3px 7px;border-radius:3px;
   border:1px solid var(--line-2);color:var(--text-2);white-space:nowrap
@@ -256,7 +260,18 @@ footer{border-top:1px solid var(--line);padding:20px 0 40px;font-size:11px;color
 
 <header>
   <div class="wrap hbar">
-    <span class="logo">ESCX</span>
+    <span class="logo"><svg viewBox="0 0 100 100" width="22" height="22" fill="none" aria-hidden="true"><defs>
+      <linearGradient id="gpr" gradientUnits="userSpaceOnUse" x1="34.5" y1="0" x2="75.4" y2="0">
+        <stop offset="0" stop-color="#B9BEC4" stop-opacity=".34"/>
+        <stop offset=".55" stop-color="#E08A45" stop-opacity=".78"/>
+        <stop offset="1" stop-color="#E08A45"/></linearGradient>
+      <radialGradient id="hpr"><stop offset="0" stop-color="#E08A45" stop-opacity=".45"/>
+        <stop offset="1" stop-color="#E08A45" stop-opacity="0"/></radialGradient></defs>
+      <path d="M 34.50 76.85 A 31 31 0 1 1 75.39 32.22" fill="none" stroke="url(#gpr)"
+        stroke-width="10" stroke-linecap="round"/>
+      <circle cx="75.4" cy="32.2" r="17.5" fill="url(#hpr)"/>
+      <circle cx="75.4" cy="32.2" r="5" fill="#E08A45"/></svg>
+      <span>brink<span class="wdot">·</span>watch</span></span>
     <span class="demo">ДЕМО-ДАННЫЕ</span>
     <nav>
       <button data-nav="world" class="on">Мир</button>
