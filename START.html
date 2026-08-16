@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Запуск сайта за $0 — пошагово</title>
+<title>ESCX — запуск шаг за шагом</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
@@ -17,254 +17,343 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--paper);color:var(--ink);font-family:var(--sans);
-  font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
-.wrap{max-width:820px;margin:0 auto;padding:52px clamp(20px,5vw,40px) 90px}
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:780px;margin:0 auto;padding:48px clamp(18px,5vw,36px) 96px}
 .micro{font-size:10px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
-h1{font-size:clamp(30px,5vw,42px);font-weight:200;letter-spacing:-.035em;line-height:1.1;margin-top:14px}
+h1{font-size:clamp(28px,5vw,40px);font-weight:200;letter-spacing:-.035em;line-height:1.1;margin-top:12px}
 h1 em{font-style:normal;color:var(--t3)}
-.lede{font-size:16px;color:var(--ink-2);font-weight:300;margin-top:20px;line-height:1.75;max-width:56ch}
-.fade{height:1px;border:0;margin:44px 0;background:linear-gradient(90deg,transparent,
+.lede{font-size:15.5px;color:var(--ink-2);font-weight:300;margin-top:18px;line-height:1.75;max-width:58ch}
+.fade{height:1px;border:0;margin:38px 0;background:linear-gradient(90deg,transparent,
   color-mix(in srgb,var(--ink) 11%,transparent) 22% 62%,transparent)}
 
-/* прогресс */
-.prog{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--paper) 88%,transparent);
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:14px 0;margin-bottom:8px}
+.prog{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--paper) 92%,transparent);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:12px 0 10px;margin:22px 0 4px}
 .prog .bar{height:3px;border-radius:2px;background:color-mix(in srgb,var(--ink) 8%,transparent);
   position:relative;overflow:hidden}
 .prog .bar i{position:absolute;inset:0 auto 0 0;width:0;border-radius:2px;
   background:linear-gradient(90deg,color-mix(in srgb,var(--t2) 50%,transparent),var(--t3));
-  transition:width .4s ease}
-.prog .lab{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-3);margin-top:8px}
+  transition:width .35s ease}
+.prog .lab{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-3);margin-top:7px}
 
-/* шаг */
-.step{display:grid;grid-template-columns:34px 1fr;gap:18px;padding:24px 0;align-items:start}
-.step + .step{border-top:0}
-.tick{width:26px;height:26px;border-radius:50%;margin-top:3px;cursor:pointer;flex:none;
-  background:var(--paper-2);position:relative;transition:background .25s;
-  display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink-3)}
+.block{margin-top:44px}
+.block .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.block h2{font-size:21px;font-weight:300;letter-spacing:-.02em}
+.block .when{font-size:11.5px;color:var(--ink-3)}
+.block .intro{font-size:13.5px;color:var(--ink-2);margin-top:8px;max-width:60ch}
+
+.step{display:grid;grid-template-columns:30px 1fr;gap:14px;padding:16px 0;align-items:start}
+.tick{width:24px;height:24px;border-radius:50%;margin-top:1px;cursor:pointer;flex:none;
+  background:var(--paper-2);transition:background .2s;font-size:11.5px;color:var(--ink-3);
+  display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
 .tick:hover{background:var(--paper-3)}
 .step.done .tick{background:var(--t3);color:#fff}
-.step.done .tick::after{content:"✓";font-size:13px}
+.step.done .tick::after{content:"✓"}
 .step.done .tick span{display:none}
-.step.done .body h2,.step.done .body p,.step.done .body li{opacity:.45}
-.body h2{font-size:19px;font-weight:400;letter-spacing:-.018em}
-.body .time{font-size:11.5px;color:var(--ink-3);margin-top:3px}
-.body p{color:var(--ink-2);margin-top:12px;font-size:14px}
-.body ol,.body ul{margin:12px 0 0 20px;color:var(--ink-2);font-size:14px}
-.body li{margin:7px 0}
-.body b{color:var(--ink);font-weight:500}
-.body a{color:var(--t3)}
-kbd{font-family:var(--sans);font-size:13px;background:var(--paper-3);border-radius:5px;
-  padding:2px 7px;color:var(--ink);white-space:nowrap}
-code{font-family:var(--mono);font-size:12.5px;background:var(--paper-2);border-radius:5px;padding:2px 6px}
-pre{font-family:var(--mono);font-size:12.5px;background:var(--paper-2);border-radius:12px;
-  padding:14px 16px;margin-top:12px;overflow-x:auto;line-height:1.7;color:var(--ink)}
-.hint{font-size:12.5px;color:var(--ink-3);margin-top:12px;padding-left:13px;
-  border-left:2px solid color-mix(in srgb,var(--ink) 9%,transparent)}
+.step.done .b{opacity:.42}
+.b .t{font-size:14.5px;line-height:1.55}
+.b .t b{font-weight:500}
+.where{font-size:12px;color:var(--ink-3);margin-top:5px}
+.where::before{content:"где: ";color:var(--ink-4)}
+.res{font-size:12px;color:var(--ink-2);margin-top:7px;padding-left:11px;
+  border-left:2px solid color-mix(in srgb,var(--t2) 45%,transparent)}
+.res::before{content:"должно получиться: ";color:var(--ink-3)}
+.warn{font-size:12px;color:var(--ink-2);margin-top:7px;padding-left:11px;
+  border-left:2px solid color-mix(in srgb,var(--t4) 40%,transparent)}
+kbd{font-family:var(--sans);font-size:13.5px;background:var(--paper-3);border-radius:5px;
+  padding:1px 6px;color:var(--ink);white-space:nowrap}
+code{font-family:var(--mono);font-size:12.5px;background:var(--paper-2);border-radius:5px;padding:1px 5px}
+pre{font-family:var(--mono);font-size:12.5px;background:var(--paper-2);border-radius:10px;
+  padding:12px 14px;margin-top:9px;overflow-x:auto;line-height:1.75;color:var(--ink)}
+a{color:var(--t3)}
 
-.card{background:var(--paper-2);border-radius:22px;padding:26px 28px;margin-top:26px}
-.card h3{font-size:16px;font-weight:400;letter-spacing:-.015em}
-.card p{font-size:14px;color:var(--ink-2);margin-top:10px}
-.money{display:grid;grid-template-columns:1fr auto;gap:10px 20px;margin-top:16px;font-size:14px}
-.money .k{color:var(--ink-2)}
-.money .v{font-family:var(--mono);text-align:right;color:var(--ink)}
-.money .tot{border-top:1px solid color-mix(in srgb,var(--ink) 10%,transparent);
-  padding-top:12px;margin-top:6px;font-size:17px}
-.skip{display:grid;grid-template-columns:1fr auto;gap:8px 18px;margin-top:14px;font-size:13.5px}
-.skip .k{color:var(--ink-2)}
-.skip .v{color:var(--ink-3);font-family:var(--mono);text-align:right;white-space:nowrap}
-.big{font-size:52px;font-weight:200;letter-spacing:-.05em;color:var(--t3);line-height:1}
-footer{margin-top:48px;font-size:12px;color:var(--ink-4);line-height:1.8}
-@media(max-width:600px){.step{grid-template-columns:28px 1fr;gap:12px}}
+.card{background:var(--paper-2);border-radius:20px;padding:22px 24px;margin-top:22px}
+.card h3{font-size:15px;font-weight:400;letter-spacing:-.01em}
+.card p{font-size:13.5px;color:var(--ink-2);margin-top:9px}
+.card p b{color:var(--ink);font-weight:500}
+.qa{padding:13px 0;border-top:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
+.qa:first-of-type{border-top:0}
+.qa .q{font-size:14px;font-weight:500}
+.qa .a{font-size:13.5px;color:var(--ink-2);margin-top:5px}
+footer{margin-top:44px;font-size:12px;color:var(--ink-4);line-height:1.8}
+@media(max-width:560px){.step{grid-template-columns:26px 1fr;gap:10px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <div class="micro">Запуск сайта</div>
-  <h1>Всё, что нужно,<br>чтобы стартовать за <em>ноль</em>.</h1>
+  <div class="micro">Запуск</div>
+  <h1>Каждый шаг<br>по порядку<em>.</em></h1>
   <p class="lede">
-    Четыре шага, примерно двадцать минут. Банковская карта не понадобится ни разу —
-    нигде не будет поля для её ввода. В конце у вас будет работающий сайт по адресу,
-    который можно кому-то показать.
+    Тридцать один шаг, четыре площадки, примерно час с перерывами на ожидание.
+    У каждого шага написано, где именно нажимать и что должно получиться —
+    если получилось не то, значит что-то пошло не так именно здесь, а не двумя экранами раньше.
   </p>
 
   <div class="prog">
     <div class="bar"><i id="pbar"></i></div>
-    <div class="lab"><span id="pcount">Сделано 0 из 4</span><span>≈ 20 минут</span></div>
+    <div class="lab"><span id="pcount">Сделано 0 из 31</span><span id="pnow">Блок А · GitHub</span></div>
   </div>
 
-  <!-- 1 -->
-  <div class="step" data-step>
-    <div class="tick"><span>1</span></div>
-    <div class="body">
-      <h2>Завести аккаунт GitHub</h2>
-      <div class="time">3 минуты · бесплатно, карта не нужна</div>
-      <p>Это «облачная папка» для кода. Там же будет бесплатно работать робот,
-      который раз в сутки собирает свежие данные.</p>
-      <ol>
-        <li>Открыть <a href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup</a></li>
-        <li>Ввести почту, придумать пароль и имя пользователя</li>
-        <li>Подтвердить почту по письму</li>
-      </ol>
-      <div class="hint">Если аккаунт уже есть — просто войдите и переходите к шагу 2.</div>
+  <!-- ============================ А ============================ -->
+  <div class="block" data-block="Блок А · GitHub">
+    <div class="head"><h2>А. Положить проект на GitHub</h2><span class="when">15 минут · бесплатно</span></div>
+    <p class="intro">GitHub нужен по двум причинам: оттуда Cloudflare берёт файлы сайта, и там же бесплатно работает робот, собирающий данные.</p>
+
+    <div class="step" data-step><div class="tick"><span>1</span></div><div class="b">
+      <div class="t">Распаковать <code>escx.zip</code>. Запомнить, куда — папка понадобится дальше.</div>
+      <div class="res">папка <b>escx</b> с файлами внутри</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>2</span></div><div class="b">
+      <div class="t">Завести аккаунт на GitHub. Почта, пароль, имя пользователя, подтверждение по письму.</div>
+      <div class="where"><a href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup</a></div>
+      <div class="res">вы вошли и видите свою страницу профиля</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>3</span></div><div class="b">
+      <div class="t">Скачать и установить <b>GitHub Desktop</b>, войти в нём своим аккаунтом.</div>
+      <div class="where"><a href="https://desktop.github.com/" target="_blank" rel="noopener">desktop.github.com</a></div>
+      <div class="warn">Так не нужен терминал. Если предпочитаете команды — см. карточку «Через терминал» в конце.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>4</span></div><div class="b">
+      <div class="t">В GitHub Desktop: <kbd>File</kbd> → <kbd>Add local repository</kbd> → выбрать папку <b>escx</b>.</div>
+      <div class="res">программа видит папку и показывает историю изменений</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>5</span></div><div class="b">
+      <div class="t">Нажать <kbd>Publish repository</kbd>. <b>Снять галочку</b> «Keep this code private». Подтвердить.</div>
+      <div class="res">репозиторий открывается на github.com и помечен <b>Public</b></div>
+      <div class="warn">Галочку снимаем не из идеализма: у публичного репозитория робот работает без ограничения по времени, у приватного — 2000 минут в месяц.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>6</span></div><div class="b">
+      <div class="t">На странице репозитория открыть вкладку <kbd>Actions</kbd> и нажать зелёную кнопку <kbd>I understand my workflows, go ahead and enable them</kbd>.</div>
+      <div class="where">github.com → ваш репозиторий → вкладка Actions</div>
+      <div class="res">список рабочих процессов: deploy, daily, hourly, tests</div>
+    </div></div>
+  </div>
+
+  <hr class="fade">
+
+  <!-- ============================ Б ============================ -->
+  <div class="block" data-block="Блок Б · сайт">
+    <div class="head"><h2>Б. Поднять сайт на Cloudflare Pages</h2><span class="when">10 минут · бесплатно, карта не нужна</span></div>
+    <p class="intro">Домен здесь не нужен. На выходе получите рабочий адрес, который уже можно показывать.</p>
+
+    <div class="step" data-step><div class="tick"><span>7</span></div><div class="b">
+      <div class="t">Зарегистрироваться в Cloudflare, подтвердить почту.</div>
+      <div class="where"><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com/sign-up</a></div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>8</span></div><div class="b">
+      <div class="t">В левом меню выбрать <kbd>Compute (Workers &amp; Pages)</kbd>.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>9</span></div><div class="b">
+      <div class="t">Нажать <kbd>Create</kbd> → перейти на вкладку <kbd>Pages</kbd> → <kbd>Connect to Git</kbd>.</div>
+      <div class="warn">Вкладка <b>Pages</b>, а не Workers. Их легко перепутать — Workers предлагается первым.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>10</span></div><div class="b">
+      <div class="t">Разрешить Cloudflare доступ к GitHub, в списке выбрать репозиторий <b>escx</b>, нажать <kbd>Begin setup</kbd>.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>11</span></div><div class="b">
+      <div class="t">Заполнить настройки сборки. Остальное не трогать.</div>
+      <pre>Project name:              escx
+Production branch:         main
+Build command:             python3 web/build.py
+Build output directory:    site</pre>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>12</span></div><div class="b">
+      <div class="t">Раскрыть <kbd>Environment variables</kbd> и добавить одну переменную.</div>
+      <pre>PYTHON_VERSION = 3.11</pre>
+      <div class="warn">Без неё сборка упадёт: по умолчанию там старый Python.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>13</span></div><div class="b">
+      <div class="t">Нажать <kbd>Save and Deploy</kbd> и подождать 1–3 минуты.</div>
+      <div class="res">зелёная надпись <b>Success</b> и ссылка вида <code>escx.pages.dev</code></div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>14</span></div><div class="b">
+      <div class="t">Открыть эту ссылку и убедиться, что сайт работает.</div>
+      <div class="res">страница с дугой, числом и списком диад; сверху плашка «демонстрационные данные»</div>
+      <div class="warn">Плашка — это нормально. Робот ещё не накопил настоящих данных, она сменится сама.</div>
+    </div></div>
+  </div>
+
+  <hr class="fade">
+
+  <!-- ============================ В ============================ -->
+  <div class="block" data-block="Блок В · домен">
+    <div class="head"><h2>В. Домен: серверы имён</h2><span class="when">10 минут + ожидание</span></div>
+    <p class="intro">Домен покупается у Google, а управлять им будет Cloudflare. Для этого в форме Google указываются серверы имён Cloudflare — но сначала их надо получить.</p>
+
+    <div class="step" data-step><div class="tick"><span>15</span></div><div class="b">
+      <div class="t">В Cloudflare вверху нажать <kbd>+ Add</kbd> → <kbd>Existing domain</kbd> (в старом интерфейсе — <kbd>Add a site</kbd>).</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>16</span></div><div class="b">
+      <div class="t">Ввести имя домена без <code>https://</code> и без <code>www</code>. Например <code>brink.watch</code>.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>17</span></div><div class="b">
+      <div class="t">Выбрать план <kbd>Free</kbd> — он в самом низу списка — и продолжить.</div>
+      <div class="warn">Платные планы предлагаются первыми и выглядят как обязательные. Бесплатного хватает полностью.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>18</span></div><div class="b">
+      <div class="t">Cloudflare покажет <b>два сервера имён</b>. Выписать обе строки целиком.</div>
+      <pre>ada.ns.cloudflare.com
+rick.ns.cloudflare.com</pre>
+      <div class="warn">Это пример. У вашего аккаунта имена будут другие — берите те, что показаны у вас.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>19</span></div><div class="b">
+      <div class="t">Вернуться в форму Google. В разделе <b>DNS configuration</b> оставить <kbd>Use custom name servers</kbd> и вписать обе строки в поля <b>Name server 1</b> и <b>Name server 2</b>.</div>
+      <div class="res">красные подписи «cannot be empty» исчезли</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>20</span></div><div class="b">
+      <div class="t">Заполнить <b>Privacy protection</b> — выбрать скрытие контактных данных.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>21</span></div><div class="b">
+      <div class="t">Заполнить <b>Contact details</b> — реальные имя, адрес, телефон, почта.</div>
+      <div class="warn">Данные должны быть настоящими: за выдуманные домен могут разделегировать. Приватность их всё равно скроет от посторонних.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>22</span></div><div class="b">
+      <div class="t">Оплатить регистрацию.</div>
+      <div class="res">домен появился в списке ваших доменов у Google</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>23</span></div><div class="b">
+      <div class="t">Вернуться в Cloudflare и нажать <kbd>Check nameservers now</kbd>. Дальше ждать.</div>
+      <div class="res">статус домена меняется на <b>Active</b>; приходит письмо</div>
+      <div class="warn">Обычно 5–30 минут, иногда до суток. Это нормально и от вас не зависит — просто периодически проверяйте.</div>
+    </div></div>
+  </div>
+
+  <hr class="fade">
+
+  <!-- ============================ Г ============================ -->
+  <div class="block" data-block="Блок Г · привязка">
+    <div class="head"><h2>Г. Привязать домен к сайту</h2><span class="when">5 минут</span></div>
+    <p class="intro">Делается только после того, как домен в Cloudflare стал <b>Active</b>.</p>
+
+    <div class="step" data-step><div class="tick"><span>24</span></div><div class="b">
+      <div class="t">Открыть <kbd>Compute (Workers &amp; Pages)</kbd> → проект <b>escx</b> → вкладка <kbd>Custom domains</kbd>.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>25</span></div><div class="b">
+      <div class="t">Нажать <kbd>Set up a domain</kbd>, ввести свой домен, нажать <kbd>Activate domain</kbd>.</div>
+      <div class="res">Cloudflare сам создаёт нужные DNS-записи — вручную ничего не прописываете</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>26</span></div><div class="b">
+      <div class="t">Подождать выпуск сертификата и открыть свой домен в браузере.</div>
+      <div class="res">сайт открывается по <code>https://ваш-домен</code> с замком в адресной строке</div>
+      <div class="warn">Первые минуты возможна ошибка сертификата — это штатно, он выпускается не мгновенно.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>27</span></div><div class="b">
+      <div class="t">В файле <code>api/wrangler.toml</code> заменить <code>SITE_URL</code> на свой домен и раскомментировать блок <code>routes</code> — он там уже заготовлен.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>28</span></div><div class="b">
+      <div class="t">В GitHub Desktop написать описание изменения и нажать <kbd>Commit to main</kbd>, затем <kbd>Push origin</kbd>.</div>
+      <div class="res">Cloudflare пересобирает сайт автоматически, через минуту изменения на месте</div>
+    </div></div>
+  </div>
+
+  <hr class="fade">
+
+  <!-- ============================ Д ============================ -->
+  <div class="block" data-block="Блок Д · подписки">
+    <div class="head"><h2>Д. Подписки — когда понадобятся</h2><span class="when">20 минут · можно отложить</span></div>
+    <p class="intro">Сайт уже работает и без этого. Делайте, только когда решите брать деньги.</p>
+
+    <div class="step" data-step><div class="tick"><span>29</span></div><div class="b">
+      <div class="t">Установить <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> версии 20 или новее.</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>30</span></div><div class="b">
+      <div class="t">Открыть терминал в папке проекта и выполнить:</div>
+      <pre>cd escx/api
+bash setup.sh</pre>
+      <div class="res">скрипт прогонит тесты, создаст базу, спросит секреты и опубликует API</div>
+    </div></div>
+
+    <div class="step" data-step><div class="tick"><span>31</span></div><div class="b">
+      <div class="t">В Paddle: <kbd>Developer tools</kbd> → <kbd>Notifications</kbd> → <kbd>New destination</kbd>. Адрес — <code>https://ваш-домен/api/webhook</code>, события: <code>subscription.created</code>, <code>subscription.updated</code>, <code>subscription.canceled</code>.</div>
+      <div class="res">секрет вида <code>pdl_ntfset_…</code> — его вводили на шаге 30</div>
+    </div></div>
+  </div>
+
+  <hr class="fade">
+
+  <div class="card">
+    <h3>Если пошло не так</h3>
+    <div class="qa" style="margin-top:10px">
+      <div class="q">Сборка упала с ошибкой про Python</div>
+      <div class="a">Не добавлена переменная <code>PYTHON_VERSION = 3.11</code> (шаг 12). Settings → Environment variables, добавить и запустить сборку заново кнопкой <kbd>Retry deployment</kbd>.</div>
+    </div>
+    <div class="qa">
+      <div class="q">Сайт открылся, но пустой и без чисел</div>
+      <div class="a">Скорее всего указана не та папка. В настройках сборки <b>Build output directory</b> должно быть ровно <code>site</code>.</div>
+    </div>
+    <div class="qa">
+      <div class="q">Домен в Cloudflare сутки висит «Pending»</div>
+      <div class="a">Серверы имён у Google прописаны с опечаткой или не сохранились. Откройте домен в Google Cloud Domains → DNS и сверьте обе строки посимвольно с тем, что показывает Cloudflare.</div>
+    </div>
+    <div class="qa">
+      <div class="q">Вкладка Actions пустая</div>
+      <div class="a">Не нажата зелёная кнопка включения (шаг 6). Без неё робот не запустится, но на работу сайта это не влияет.</div>
+    </div>
+    <div class="qa">
+      <div class="q">Cloudflare не даёт добавить домен на шаге 15</div>
+      <div class="a">Бывает, пока домен не зарегистрирован. Тогда в форме Google включите <b>Cloud DNS</b>, завершите покупку, а потом вернитесь к шагам 15–19: серверы имён меняются в любой момент после регистрации.</div>
     </div>
   </div>
 
-  <!-- 2 -->
-  <div class="step" data-step>
-    <div class="tick"><span>2</span></div>
-    <div class="body">
-      <h2>Положить проект на GitHub</h2>
-      <div class="time">7 минут · бесплатно</div>
-      <p>Самый простой способ — через бесплатную программу GitHub Desktop.
-      Терминал и команды не нужны.</p>
-      <ol>
-        <li>Распаковать <code>escx.zip</code> — получится папка <b>escx</b></li>
-        <li>Скачать и установить <a href="https://desktop.github.com/" target="_blank" rel="noopener">GitHub Desktop</a>, войти своим аккаунтом</li>
-        <li>В программе: <kbd>File</kbd> → <kbd>Add local repository</kbd> → выбрать папку <b>escx</b></li>
-        <li>Нажать <kbd>Publish repository</kbd></li>
-        <li><b>Снять галочку</b> «Keep this code private» — репозиторий должен быть публичным</li>
-        <li>Нажать <kbd>Publish repository</kbd> ещё раз</li>
-      </ol>
-      <div class="hint">
-        Галочку снимаем не из идеализма: у публичного репозитория робот работает
-        <b>без ограничения по времени и бесплатно</b>, у приватного — 2000 минут в месяц.
-        Плюс открытая методология и есть главный аргумент этого продукта.
-      </div>
-      <p style="margin-top:16px;font-size:13.5px;color:var(--ink-3)">
-        Если привычнее терминал — три команды вместо всего перечисленного:</p>
-      <pre>cd escx
+  <div class="card">
+    <h3>Через терминал, если так привычнее</h3>
+    <p>Шаги 3–5 заменяются двумя командами. Нужен установленный <a href="https://cli.github.com/" target="_blank" rel="noopener">GitHub CLI</a>.</p>
+    <pre>cd escx
 gh repo create escx --public --source=. --push</pre>
-    </div>
-  </div>
-
-  <!-- 3 -->
-  <div class="step" data-step>
-    <div class="tick"><span>3</span></div>
-    <div class="body">
-      <h2>Включить робота, который собирает данные</h2>
-      <div class="time">1 минута · бесплатно</div>
-      <p>GitHub по умолчанию не запускает автоматику в свежем репозитории — надо один раз разрешить.</p>
-      <ol>
-        <li>Открыть свой репозиторий на github.com</li>
-        <li>Вкладка <kbd>Actions</kbd></li>
-        <li>Нажать зелёную кнопку <kbd>I understand my workflows, go ahead and enable them</kbd></li>
-      </ol>
-      <div class="hint">
-        Дальше он работает сам: раз в час забирает свежие новости, раз в сутки пересчитывает
-        индекс. Ничего запускать руками не нужно.
-      </div>
-    </div>
-  </div>
-
-  <!-- 4 -->
-  <div class="step" data-step>
-    <div class="tick"><span>4</span></div>
-    <div class="body">
-      <h2>Подключить хостинг Cloudflare Pages</h2>
-      <div class="time">7 минут · бесплатно, карта не нужна</div>
-      <p>Это то, что показывает сайт людям. Выбран не случайно: у GitHub Pages и Vercel
-      в правилах прямо запрещено вести на бесплатном тарифе бизнес, а у вас в планах платные
-      подписки. У Cloudflare такого запрета нет.</p>
-      <ol>
-        <li>Зарегистрироваться на <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com</a></li>
-        <li>В левом меню: <kbd>Compute (Workers &amp; Pages)</kbd></li>
-        <li><kbd>Create</kbd> → вкладка <kbd>Pages</kbd> → <kbd>Connect to Git</kbd></li>
-        <li>Разрешить доступ к GitHub, выбрать репозиторий <b>escx</b></li>
-        <li>Заполнить три поля и больше ничего не трогать:</li>
-      </ol>
-      <pre>Build command:            python3 web/build.py
-Build output directory:   site
-Variable  PYTHON_VERSION = 3.11</pre>
-      <ol start="6">
-        <li>Нажать <kbd>Save and Deploy</kbd> и подождать пару минут</li>
-      </ol>
-      <div class="hint">
-        Переменная <code>PYTHON_VERSION</code> добавляется в разделе
-        <b>Environment variables</b> на той же странице настроек сборки.
-      </div>
-    </div>
-  </div>
-
-  <hr class="fade">
-
-  <div class="card">
-    <div class="micro">Что получится</div>
-    <h3 style="margin-top:8px">Работающий сайт по адресу <code>escx.pages.dev</code></h3>
-    <p>
-      Открывается у кого угодно, работает по защищённому соединению, обновляется сам.
-      Дальше вам не нужно делать ничего: робот собирает данные, хостинг пересобирает
-      страницу. Каждое изменение в проекте автоматически появляется на сайте через минуту.
-    </p>
-    <p>
-      Первое время сайт покажет плашку «демонстрационные данные» — это честно и так задумано.
-      Как только робот накопит настоящие, плашка сменится сама.
-    </p>
   </div>
 
   <div class="card">
-    <div class="micro">Сколько это стоит</div>
-    <div class="money">
-      <span class="k">Хостинг сайта</span><span class="v">$0</span>
-      <span class="k">Робот, собирающий данные</span><span class="v">$0</span>
-      <span class="k">Адрес escx.pages.dev</span><span class="v">$0</span>
-      <span class="k">Источники данных — UCDP, GDELT</span><span class="v">$0</span>
-      <span class="k tot">Итого в месяц</span><span class="v tot">$0.00</span>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="micro">Что можно спокойно не делать сейчас</div>
-    <p>Это единственные места, где появляются деньги. Ни одно из них не нужно для запуска.</p>
-    <div class="skip">
-      <span class="k">Свой домен вместо escx.pages.dev</span><span class="v">~$12 в год</span>
-      <span class="k">Умный разбор новостей нейросетью</span><span class="v">~$60 в месяц</span>
-      <span class="k">Загрузка старых новостей из архива Google</span><span class="v">от $0</span>
-    </div>
-    <p style="margin-top:16px">
-      Без нейросети часть показателей будет пустой — и сайт честно покажет это серым цветом
-      и подписью «нет данных». Это лучше, чем красивая цифра, за которой ничего нет.
-      Включить можно потом, одной настройкой.
-    </p>
-  </div>
-
-  <div class="card">
-    <div class="micro">Чего за ноль не будет</div>
-    <p>
-      <b>Платных подписок и личного кабинета.</b> Чтобы принимать деньги, нужно место,
-      где хранится «кто что оплатил», а у бесплатного сайта такого места нет.
-      Это следующий шаг — и делать его стоит не раньше, чем найдётся первый желающий заплатить.
-    </p>
-    <p>
-      <b>Писем с оповещениями.</b> По той же причине. Тоже решается бесплатно, но позже.
-    </p>
-  </div>
-
-  <hr class="fade">
-
-  <div style="text-align:center;padding:16px 0 8px">
-    <div class="big">$0.00</div>
-    <p style="color:var(--ink-2);margin-top:14px;font-size:14px">
-      Ничего платить не нужно. Нужно двадцать минут.
-    </p>
+    <h3>Сколько это стоит</h3>
+    <p>Блоки А, Б, Г, Д — <b>ноль</b>. Единственная трата — домен в блоке В, примерно <b>$12 в год</b>.</p>
+    <p>Если домен пока не нужен, блоки В и Г можно пропустить целиком: сайт работает на бесплатном адресе <code>escx.pages.dev</code>, и домен подключается к нему в любой момент позже.</p>
   </div>
 
   <footer>
-    Подробности и обоснование выбора хостинга — в документе «Публикация» (docs/06-deploy.md).<br>
-    Цены и лимиты сверены с официальной документацией GitHub и Cloudflare, август 2026.
+    Обоснование выбора хостинга — <code>docs/06-deploy.md</code>. Подписки и доступ — <code>docs/07-billing.md</code>.<br>
+    Названия кнопок приведены как в английском интерфейсе — он включён по умолчанию.
   </footer>
 </div>
 
 <script>
-const steps = [...document.querySelectorAll('[data-step]')];
-const bar = document.getElementById('pbar'), cnt = document.getElementById('pcount');
+const steps  = [...document.querySelectorAll('[data-step]')];
+const blocks = [...document.querySelectorAll('[data-block]')];
+const bar = document.getElementById('pbar');
+const cnt = document.getElementById('pcount');
+const now = document.getElementById('pnow');
+
 function sync(){
   const done = steps.filter(s => s.classList.contains('done')).length;
   bar.style.width = (done / steps.length * 100) + '%';
   cnt.textContent = `Сделано ${done} из ${steps.length}`;
-  try { localStorage } catch(e) {}
+  const next = steps.find(s => !s.classList.contains('done'));
+  const blk = next ? next.closest('[data-block]') : null;
+  now.textContent = blk ? blk.dataset.block : 'Готово';
 }
 steps.forEach(s => s.querySelector('.tick').onclick = () => {
   s.classList.toggle('done'); sync();
