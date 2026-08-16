@@ -1,0 +1,24 @@
+name = "escx-api"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+# Публичная статика живёт на Cloudflare Pages и Worker не трогает вовсе.
+# Сюда приходят только запросы про деньги и доступ — поэтому бесплатного
+# лимита в 100 000 запросов в сутки хватает с огромным запасом.
+routes = [
+  { pattern = "brink.watch/api/*", zone_name = "brink.watch" }
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "escx"
+database_id = "ЗАПОЛНИТЬ_ПОСЛЕ_wrangler_d1_create"
+
+[vars]
+SITE_URL = "https://brink.watch"
+PROVIDER = "paddle"          # paddle | stripe
+MAIL_FROM = "no-reply@brink.watch"
+
+# Секреты кладутся отдельно и в файл не попадают:
+#   wrangler secret put PADDLE_WEBHOOK_SECRET
+#   wrangler secret put RESEND_API_KEY

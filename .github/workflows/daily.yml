@@ -12,6 +12,9 @@ jobs:
         with: {python-version: "3.11"}
       - run: python ingest/tests/test_offline.py          # тесты до прогона, а не после
       - run: python ingest/tests/test_llm_offline.py
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node api/test/test.mjs
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with: {name: escx-db, path: ingest}
