@@ -15,8 +15,9 @@
 ```
 docs/          методология, бизнес-план, техплан, сбор данных, ИИ в контуре — читать в этом порядке
 design/        tokens.css + escx-ui.js — дизайн-язык в коде; styleguide.html — витрина
-web/           prototype.html (кликабельный, тёмная тема) · schema.html (схема проекта)
+web/           build.py — сборка статики; templates/ — шаблон сайта; прототипы
 ingest/        Python-пакет сбора данных, нулевые зависимости, 99 офлайн-тестов
+site/          результат сборки, в git не хранится
 .github/       ежечасный и ежедневный прогоны, тесты на push
 ```
 
@@ -27,7 +28,12 @@ ingest/        Python-пакет сбора данных, нулевые зав�
 python3 ingest/tests/test_offline.py        # 46 проверок пайплайна
 python3 ingest/tests/test_llm_offline.py    # 53 проверки LLM-контура
 
-# сборщик
+# сайт
+python3 web/build.py            # site/ из ingest/escx.db
+python3 web/build.py --demo     # site/ на демо-данных, база не нужна
+python3 -m http.server -d site 8000
+
+# сборщик данных
 cd ingest
 python3 -m escx.cli init
 python3 -m escx.cli backfill-ucdp --start 2020-01-01 --end 2024-12-31
@@ -118,6 +124,23 @@ python3 -m escx.cli llm-eval --gold gold.json --pred pred.json   # ненуле�
 `web/prototype.html` пока в старой тёмной теме. Перевод на «Тепло» — ближайшая задача:
 подключить `design/tokens.css`, заменить отрисовку на функции из `design/escx-ui.js`,
 удалить все `border` и заменить на `.fade` и `.heatrow`.
+
+---
+
+## Публикация
+
+Сайт статический и потому бесплатный: пайплайн считает заранее, `web/build.py`
+выгружает витрину в JSON, хостинг отдаёт папку `site/`.
+
+**Хостинг — Cloudflare Pages.** GitHub Pages и Vercel Hobby в условиях запрещают
+коммерческое использование, а в плане есть платные тарифы. Конфигурации обеих
+в `.github/workflows/deploy.yml` и в `docs/06-deploy.md`.
+
+Сборка обязана работать без базы (`--demo`) — иначе деплой ломается в день,
+когда пайплайн ещё не отработал. Это покрыто ежедневным прогоном.
+
+`_walk()` в build.py детерминирован намеренно: `random` и `Date.now()` дали бы
+новый диф на каждой сборке и превратили историю коммитов в шум.
 
 ---
 

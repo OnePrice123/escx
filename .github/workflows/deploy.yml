@@ -1,0 +1,56 @@
+# Публикация статического сайта на GitHub Pages.
+#
+# Почему это бесплатно: сайт не ходит в базу. Пайплайн считает всё заранее,
+# build.py выгружает результат в JSON, и получается папка со статикой.
+# Ни сервера, ни базы, ни бэкенда — платить не за что.
+#
+# Разовая настройка в репозитории:
+#   Settings → Pages → Source: GitHub Actions
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '**.md']
+  schedule:
+    - cron: "30 3 * * *"      # через полчаса после ежедневного пересчёта
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+
+      - name: восстановить базу из артефакта ежедневного прогона
+        uses: actions/download-artifact@v4
+        continue-on-error: true          # базы может ещё не быть — соберётся демо
+        with: {name: escx-db, path: ingest}
+
+      - name: собрать сайт
+        run: python3 web/build.py
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: {path: site}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
