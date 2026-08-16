@@ -1,3 +1,16 @@
+# Ежедневный прогон: догрузить данные -> пересчитать -> собрать сайт.
+#
+# ПРО ХРАНЕНИЕ БАЗЫ. Раньше база передавалась между прогонами через artifact.
+# Это не работало: actions/download-artifact@v4 видит только артефакты СВОЕГО
+# прогона, а чтобы достать чужой, ему нужны run-id и токен. Молча, без ошибки,
+# каждый запуск начинал с пустой базы — и накопления истории не происходило
+# вообще. Теперь база лежит в кэше: actions/cache восстанавливает последнюю
+# запись по префиксу ключа, и это его штатный режим, а не обходной приём.
+#
+# Кэш GitHub вычищает записи, к которым не обращались 7 дней. Прогон
+# ежедневный, так что до этого не доходит. Но кэш — не архив: он может
+# пропасть. Поэтому снимок витрины коммитится в репозиторий (шаг в конце),
+# и полная история восстанавливается бэкфиллом за один прогон.
 name: daily
 
 on:
@@ -7,6 +20,10 @@ on:
 
 permissions:
   contents: write        # нужно, чтобы коммитить снимок данных
+
+concurrency:
+  group: pipeline        # два прогона на одной базе — гонка и битый кэш
+  cancel-in-progress: false
 
 jobs:
   run:
@@ -21,12 +38,16 @@ jobs:
       - name: тесты до прогона, а не после
         run: |
           python3 ingest/tests/test_offline.py
+          python3 ingest/tests/test_compute_offline.py
           python3 ingest/tests/test_llm_offline.py
           node api/test/test.mjs
 
-      - uses: actions/download-artifact@v4
-        continue-on-error: true
-        with: {name: escx-db, path: ingest}
+      - name: восстановить базу
+        uses: actions/cache@v4
+        with:
+          path: ingest/escx.db
+          key: escx-db-${{ github.run_id }}
+          restore-keys: escx-db-
 
       - run: cd ingest && python -m escx.cli init
 
@@ -37,23 +58,33 @@ jobs:
           START=$(date -u -d '35 days ago' +%Y-%m-%d)
           python -m escx.cli backfill-ucdp --start "$START" --end "$END"
 
-      - run: cd ingest && python -m escx.cli status
-      - run: python3 web/build.py
+      # Доли населения, ВВП и военных расходов. Без них глобальный индекс не
+      # считается вовсе. Меняются раз в год, но запрос дешёвый — берём каждый раз.
+      - name: обновить веса последствий
+        continue-on-error: true          # упал Всемирный банк — не повод ронять прогон
+        run: cd ingest && python -m escx.cli pull-weights
 
-      # Снимок витрины кладём в репозиторий. Две причины:
-      # 1. История индекса версионируется — это тот же принцип, что append-only
+      - name: пересчитать индикаторы и накал
+        run: cd ingest && python -m escx.cli compute
+
+      - run: cd ingest && python -m escx.cli status
+      - run: python3 web/build.py --to-root
+
+      # Снимок витрины и собранный сайт кладём в репозиторий. Три причины:
+      # 1. История индекса версионируется — тот же принцип, что append-only
       #    в базе: посмотреть, что мы показывали месяц назад, можно всегда.
-      # 2. Коммит считается активностью репозитория. Без него GitHub отключает
+      # 2. Cloudflare Pages в текущей настройке публикует корень репозитория,
+      #    поэтому обновление сайта — это коммит, а не отдельный деплой.
+      # 3. Коммит считается активностью репозитория. Без него GitHub отключает
       #    расписания после 60 дней тишины, и пайплайн молча встанет.
-      - name: сохранить снимок витрины
+      - name: сохранить и опубликовать
         run: |
           mkdir -p data
           cp site/data/index.json data/latest.json
           git config user.name  "escx-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add data/latest.json
+          # git add -A по всему дереву: база и кэш закрыты .gitignore, а корень
+          # с собранным сайтом обязан уехать целиком — именно он и публикуется.
+          git add -A
           git diff --staged --quiet || git commit -m "данные: снимок $(date -u +%Y-%m-%d)"
           git push
-
-      - uses: actions/upload-artifact@v4
-        with: {name: escx-db, path: ingest/escx.db, retention-days: 30, overwrite: true}

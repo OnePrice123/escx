@@ -8,6 +8,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.11"}
       - run: python ingest/tests/test_offline.py
+      - run: python ingest/tests/test_compute_offline.py
       - run: python ingest/tests/test_llm_offline.py
       - uses: actions/setup-node@v4
         with: {node-version: '22'}

@@ -23,6 +23,9 @@ import argparse, json, math, shutil, sqlite3, sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "ingest"))
+from escx import weights as wt          # noqa: E402  веса последствий для GEI
+
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 DB   = ROOT / "ingest" / "escx.db"
@@ -37,28 +40,115 @@ TEMPO  = {"spike": "Резкая эскалация", "up": "Нагрев", "fla
 # Данные
 # --------------------------------------------------------------------------
 def from_db(path: Path) -> dict | None:
-    """Читает витрину. Возвращает None, если базы или расчётов ещё нет."""
+    """Читает витрину. Возвращает None, если базы или расчётов ещё нет.
+
+    None здесь — не ошибка, а штатное состояние до первого прогона: сборка
+    переключается на честный пустой реестр. Поэтому все запросы обёрнуты, и ни
+    один из них не имеет права уронить сборку сайта.
+    """
     if not path.exists():
         return None
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     try:
         rows = con.execute("""
-            SELECT d.dyad_id, d.side_a, d.side_b, d.dyad_type, d.disputed,
+            SELECT d.dyad_id, d.name, d.region, d.side_a, d.side_b, d.dyad_type,
+                   d.disputed, d.phase, d.phase_basis,
                    h.day, h.h_abs, h.h_rel, h.delta_7, h.delta_30, h.tempo,
-                   h.data_coverage, h.method_version
+                   h.data_coverage, h.events_30d, h.method_version
             FROM dyads d
             JOIN heat_daily h ON h.dyad_id = d.dyad_id
             WHERE h.day = (SELECT MAX(day) FROM heat_daily WHERE dyad_id = d.dyad_id)
               AND d.status = 'active'
         """).fetchall()
+        if not rows:
+            return None
+
+        series: dict[str, list[int]] = {}
+        for r in con.execute("SELECT dyad_id, day, h_abs FROM heat_daily "
+                             "ORDER BY dyad_id, day"):
+            series.setdefault(r["dyad_id"], []).append(round(r["h_abs"] or 0))
+
+        # Доли для весов последствий: последний известный срез по каждой стране.
+        shares: dict[str, dict[str, float]] = {"pop": {}, "gdp": {}, "mil": {}}
+        for r in con.execute(
+                "SELECT series_key, value, as_of FROM series "
+                "WHERE source='worldbank' ORDER BY as_of"):
+            k = r["series_key"]                     # share_pop:RUS
+            if not k.startswith("share_") or ":" not in k:
+                continue
+            kind, iso = k[6:].split(":", 1)
+            if kind in shares:
+                shares[kind][iso] = r["value"]
     except sqlite3.OperationalError:
         return None
     finally:
         con.close()
-    if not rows:
+
+    dyads = []
+    for r in rows:
+        d = dict(r)
+        ph = d.get("phase")
+        d["phase_name"] = PHASES[ph] if isinstance(ph, int) and 0 <= ph < len(PHASES) else None
+        d["tempo_name"] = TEMPO.get(d.get("tempo"))
+        d["name"] = d.get("name") or f'{d["side_a"]} — {d["side_b"]}'
+        for k in ("h_abs", "h_rel", "delta_7", "delta_30", "data_coverage"):
+            d[k] = None if d.get(k) is None else round(d[k])
+        d["series_90d"] = series.get(d["dyad_id"], [])[-90:]
+        d["events_30d"] = None if d.get("events_30d") is None else int(d["events_30d"])
+        d["weight"] = wt.consequence(d["side_a"], d["side_b"], shares)
+        dyads.append(d)
+
+    total_w = sum(d["weight"] for d in dyads if d["weight"])
+    for d in dyads:
+        d["weight_share"] = round(100 * d["weight"] / total_w, 1) if (total_w and d["weight"]) else None
+        d.pop("weight", None)
+    dyads.sort(key=lambda x: (-(x["h_abs"] or 0), x["name"]))
+
+    return {"dyads": dyads, "source": "db",
+            "global": global_index(dyads, shares),
+            "registry_total": len(dyads)}
+
+
+def global_index(dyads: list[dict], shares: dict[str, dict[str, float]]) -> dict | None:
+    """GEI = Σ(c·H)/Σc. None, если веса последствий ещё не загружены.
+
+    Прочерк вместо числа — осознанное решение. Заменить недостающие веса
+    единицами технически ничего не стоит, и получилось бы правдоподобное число,
+    которое на самом деле было бы простым средним — ровно тем, что раздел 5A
+    методологии отвергает как «успокаивающее число, не значащее ничего».
+    """
+    pairs = [(d, d.get("weight_share")) for d in dyads if d.get("weight_share")]
+    if not pairs or not shares.get("gdp"):
         return None
-    return {"dyads": [dict(r) for r in rows], "source": "db"}
+    tw = sum(w for _, w in pairs)
+    gei = round(sum(w * (d["h_abs"] or 0) for d, w in pairs) / tw)
+    d30 = round(sum(w * (d.get("delta_30") or 0) for d, w in pairs) / tw)
+
+    kinetic = [d for d in dyads if (d.get("phase") or 0) >= 3]
+    nuclear = [d for d, w in pairs if wt.nuclear_mult(d["side_a"], d["side_b"]) > 1]
+    top_mil = sorted(pairs, key=lambda p: -(shares["mil"].get(p[0]["side_a"], 0)
+                                            + shares["mil"].get(p[0]["side_b"], 0)))[:8]
+
+    def wavg(items):
+        t = sum(w for _, w in items)
+        return round(sum(w * (d["h_abs"] or 0) for d, w in items) / t) if t else None
+
+    return {
+        "gei": gei, "delta_30": d30,
+        "axes": [
+            {"key": "kinetic", "name": "Кинетическая интенсивность",
+             "value": wavg([(d, w) for d, w in pairs if d in kinetic]),
+             "note": f"диад в фазе 3 и выше: {len(kinetic)} из {len(dyads)}"},
+            {"key": "powers", "name": "Вовлечённость крупных держав",
+             "value": wavg(top_mil),
+             "note": "восемь диад с наибольшей долей мировых военных расходов"},
+            {"key": "strategic", "name": "Стратегический риск",
+             "value": wavg([(d, w) for d, w in pairs if d in nuclear]),
+             "note": f"диад с ядерной стороной: {len(nuclear)}"},
+        ],
+        "series_5y": [],
+    }
 
 
 def registry_state() -> dict:

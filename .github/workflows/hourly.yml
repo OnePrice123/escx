@@ -1,4 +1,4 @@
-# Сбор свежего потока GDELT.
+# Сбор свежего потока GDELT. Только сбор: пересчёт и публикация — в daily.
 #
 # ВАЖНО при приватном репозитории: бесплатных минут Actions там 2000 в месяц,
 # а ежечасный прогон съедает примерно 1000-2000. Впритык.
@@ -6,11 +6,19 @@
 #     - cron: "7 */3 * * *"
 # Точность индекса от этого почти не страдает: горизонты у нас месячные.
 # У публичного репозитория минуты не ограничены, и ежечасный прогон уместен.
+#
+# База берётся из того же кэша, что и в daily: ключ общий, поэтому события,
+# собранные здесь, доезжают до ночного пересчёта.
 name: pull-gdelt
 on:
   schedule:
     - cron: "7 * * * *"      # ежечасно; GDELT обновляется в :00/:15/:30/:45
   workflow_dispatch:
+
+concurrency:
+  group: pipeline            # тот же ключ, что у daily: одна база — один писатель
+  cancel-in-progress: false
+
 jobs:
   pull:
     runs-on: ubuntu-latest
@@ -18,12 +26,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.11"}
-      - name: восстановить БД из артефакта
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with: {name: escx-db, path: ingest}
+
+      - name: восстановить базу
+        uses: actions/cache@v4
+        with:
+          path: ingest/escx.db
+          key: escx-db-${{ github.run_id }}
+          restore-keys: escx-db-
+
       - run: cd ingest && python -m escx.cli init
+      # 5 срезов при часовом расписании — запас: нужно 4, лишние отсеются
+      # по метке watermark и повторно скачаны не будут.
       - run: cd ingest && python -m escx.cli pull-gdelt --slices 5
       - run: cd ingest && python -m escx.cli status
-      - uses: actions/upload-artifact@v4
-        with: {name: escx-db, path: ingest/escx.db, retention-days: 7, overwrite: true}

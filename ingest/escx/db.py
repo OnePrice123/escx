@@ -23,7 +23,13 @@ CREATE TABLE IF NOT EXISTS dyads (
   dyad_type   TEXT NOT NULL,
   disputed    TEXT,
   since       INTEGER,
-  status      TEXT NOT NULL DEFAULT 'active'
+  status      TEXT NOT NULL DEFAULT 'active',
+  -- Название и регион нужны витрине. Держим их в базе, а не только в JSON:
+  -- сборщик сайта читает базу и не должен знать про файлы реестра.
+  name        TEXT,
+  region      TEXT,
+  phase       INTEGER,           -- текущая фаза; пересчитывается compute
+  phase_basis TEXT               -- 'ucdp' | 'media' | NULL — на чём основана
 );
 
 -- Сырьё. Естественный ключ (source, source_id) даёт идемпотентность:
@@ -75,6 +81,7 @@ CREATE TABLE IF NOT EXISTS heat_daily (
   delta_7        REAL, delta_30 REAL,
   tempo          TEXT,
   data_coverage  REAL,
+  events_30d     REAL,          -- сколько событий стоит за числом; NULL = источник не покрывал период
   method_version TEXT NOT NULL,
   run_id         TEXT NOT NULL,
   PRIMARY KEY (dyad_id, day, method_version)
@@ -135,11 +142,27 @@ BEGIN SELECT RAISE(ABORT, 'журнал фаз только для вставк�
 """
 
 
+# Колонки, добавленные после первых прогонов. У кого база уже создана, ALTER
+# доводит её до текущей схемы: CREATE TABLE IF NOT EXISTS существующую не трогает.
+MIGRATIONS = [
+    ("dyads", "name",        "TEXT"),
+    ("dyads", "region",      "TEXT"),
+    ("dyads", "phase",       "INTEGER"),
+    ("dyads", "phase_basis", "TEXT"),
+    ("heat_daily", "events_30d", "REAL"),
+]
+
+
 def connect(path: str | Path = "escx.db") -> sqlite3.Connection:
     con = sqlite3.connect(str(path))
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
     con.executescript(GUARDS)
+    for table, col, decl in MIGRATIONS:
+        cols = {r["name"] for r in con.execute(f"PRAGMA table_info({table})")}
+        if col not in cols:
+            con.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+    con.commit()
     return con
 
 
@@ -156,6 +179,21 @@ def upsert_events(con: sqlite3.Connection, rows: list[dict]) -> int:
     con.executemany(sql, [[r.get(c) for c in cols] for r in rows])
     con.commit()
     return con.total_changes - before
+
+
+def add_series(con, source: str, key: str, as_of: str, value: float) -> None:
+    """Накопительная запись внешнего ряда.
+
+    Именно накопительная, а не перезапись: за сутки приходит до 96 срезов GDELT,
+    и каждый добавляет свой объём к дневному итогу. REPLACE оставил бы только
+    последний срез, а знаменатель нормировки стал бы в сто раз меньше числителя.
+    Повторная загрузка того же среза защищена меткой watermark, а не этой строкой.
+    """
+    con.execute(
+        "INSERT INTO series(source,series_key,as_of,value) VALUES(?,?,?,?) "
+        "ON CONFLICT(source,series_key,as_of) DO UPDATE SET value=value+excluded.value",
+        (source, key, as_of, value))
+    con.commit()
 
 
 def get_watermark(con, source: str, default: str = "") -> str:

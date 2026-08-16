@@ -35,6 +35,8 @@
   .sp{flex:1}
   .banner{font-size:12px;color:var(--ink-2);padding:10px 0}
   .banner b{color:var(--ink);font-weight:600}
+  .basis{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-4);
+    margin-left:8px;white-space:nowrap}
   main{padding-bottom:96px}
   .gwrap{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:clamp(24px,4vw,56px);
     align-items:center;position:relative;z-index:2}
@@ -200,15 +202,21 @@ function render(){
 
   const list = [...DATA.dyads].sort((a, b) => b.delta_30 - a.delta_30);
   document.getElementById('rows').innerHTML = list.map((d, i) => {
+    // Приглушение и подпись — про покрытие, а не про «нет данных»: данные есть,
+    // но пока измерено два блока из пяти, и это должно быть написано числом.
     const stale = d.data_coverage < 40;
     const col = stale ? 'var(--ink-4)' : heatColor(d.h_abs);
     return `<div class="heatrow ${stale ? 'is-stale' : ''}"
               style="--heat:${heatWash(d.h_abs, { stale })}">
       <div class="row">
         <span class="name">${d.name || d.dyad_id}${stale
-          ? '<span class="stale-tag">нет данных</span>' : ''}</span>
-        <span class="ph">${d.phase_name}</span>
-        <span class="hv num" style="color:${col}">${d.h_abs}</span>
+          ? `<span class="stale-tag" title="доля индикаторов со свежими данными"
+               >покрытие ${d.data_coverage}%</span>` : ''}</span>
+        <span class="ph">${d.phase_name}${d.phase_basis === 'media' && d.phase > 0
+          ? '<span class="basis" title="фаза выведена из медиапотока, а не из документа">по медиа</span>' : ''}</span>
+        <span class="hv num" style="color:${col}"
+          title="${d.events_30d === null ? 'период не покрыт источником'
+                 : d.events_30d + ' событий за 30 дней'}">${d.h_abs}</span>
         <span class="sk">${sparkWash(d.series_90d || [],
           { color: stale ? 'var(--ink-4)' : undefined, id: 'r' + i })}</span>
         <span class="tp">${sgn(d.delta_30)} · ${d.tempo_name}</span>
@@ -216,8 +224,9 @@ function render(){
   }).join('');
 
   document.getElementById('legend').textContent =
-    `${list.length} диад · приглушены те, где покрытие данных ниже 40 %: ` +
-    `отсутствие данных не означает отсутствия риска`;
+    `${list.length} диад · 50 — норма для этой пары, а не половина пути к войне: ` +
+    `накал показывает отклонение от медианы, а не расстояние до войны · ` +
+    `приглушены строки с покрытием ниже 40 %`;
 }
 
 fetch('data/index.json').then(r => r.json()).then(d => {

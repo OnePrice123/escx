@@ -1,0 +1,82 @@
+# Разовый исторический прогон. Запускается руками, кнопкой.
+#
+# Зачем он нужен отдельно. Накал — это отклонение от нормы, а норма считается
+# по истории самой диады. Без истории нормы нет, и первое же число оказывается
+# отклонением от самого себя, то есть ровно пятьюдесятью. Поэтому до первого
+# осмысленного числа нужно один раз загрузить несколько лет UCDP.
+#
+# Где запускать: вкладка Actions -> backfill -> Run workflow. Годы можно
+# оставить по умолчанию. Прогон занимает 10-30 минут: UCDP отдаёт по 1000
+# событий на запрос, и торопить его нельзя — у API лимит 5000 запросов в сутки.
+name: backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "начало периода, ГГГГ-ММ-ДД"
+        default: "2015-01-01"
+      end:
+        description: "конец периода, ГГГГ-ММ-ДД (пусто = сегодня)"
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+
+      - name: восстановить базу
+        uses: actions/cache@v4
+        with:
+          path: ingest/escx.db
+          key: escx-db-${{ github.run_id }}
+          restore-keys: escx-db-
+
+      - run: cd ingest && python -m escx.cli init
+
+      # По году за раз. Одним запросом на десять лет UCDP отдаёт сотни тысяч
+      # строк и обрывает соединение; к тому же при обрыве терялся бы весь прогон,
+      # а так — только текущий год, и повтор безопасен: ключ (source, source_id)
+      # делает загрузку идемпотентной.
+      - name: загрузить историю UCDP по годам
+        run: |
+          cd ingest
+          END="${{ inputs.end }}"; [ -z "$END" ] && END=$(date -u +%Y-%m-%d)
+          Y0=$(date -u -d "${{ inputs.start }}" +%Y); Y1=$(date -u -d "$END" +%Y)
+          for Y in $(seq "$Y0" "$Y1"); do
+            A="$Y-01-01"; B="$Y-12-31"
+            [ "$Y" = "$Y0" ] && A="${{ inputs.start }}"
+            [ "$Y" = "$Y1" ] && B="$END"
+            echo "::group::$Y"
+            python -m escx.cli backfill-ucdp --start "$A" --end "$B"
+            echo "::endgroup::"
+          done
+
+      - name: веса последствий
+        continue-on-error: true
+        run: cd ingest && python -m escx.cli pull-weights
+
+      - run: cd ingest && python -m escx.cli compute
+      - run: cd ingest && python -m escx.cli status
+      - run: python3 web/build.py --to-root
+
+      - name: опубликовать
+        run: |
+          mkdir -p data
+          cp site/data/index.json data/latest.json
+          git config user.name  "escx-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "бэкфилл: история с ${{ inputs.start }}"
+          git push

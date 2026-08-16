@@ -19,6 +19,7 @@
 ```bash
 # 1. тесты сборщика данных — сеть не нужна
 python3 ingest/tests/test_offline.py
+python3 ingest/tests/test_compute_offline.py
 python3 ingest/tests/test_llm_offline.py
 node api/test/test.mjs
 
@@ -38,6 +39,8 @@ python3 -m http.server -d site 8000     # http://localhost:8000
 cd ingest
 python3 -m escx.cli init
 python3 -m escx.cli backfill-ucdp --start 2024-01-01 --end 2024-12-31
+python3 -m escx.cli pull-weights
+python3 -m escx.cli compute
 python3 -m escx.cli status
 ```
 
@@ -114,7 +117,9 @@ sparkEl.innerHTML  = ESCX.sparkWash(series);
 Сайт опубликован: **[brink.watch](https://brink.watch/)**. Данных пока нет — показано
 честное пустое состояние: реестр из 20 наблюдаемых пар государств без единого числа.
 
-Ближайшая задача: первый полный прогон пайплайна по UCDP, чтобы появились реальные значения.
+Пайплайн готов целиком: сбор (UCDP, GDELT, Всемирный банк), расчёт (`compute`), витрина.
+**Ближайший шаг — один раз запустить исторический прогон:** вкладка Actions -> backfill ->
+Run workflow. Дальше ежедневный прогон обновляет всё сам.
 
 Контекст для Claude Code — в `CLAUDE.md`.
 

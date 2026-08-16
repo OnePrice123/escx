@@ -3,14 +3,16 @@
   python -m escx.cli init
   python -m escx.cli backfill-ucdp --start 2015-01-01 --end 2024-12-31
   python -m escx.cli pull-gdelt --slices 8
+  python -m escx.cli pull-weights
+  python -m escx.cli compute
   python -m escx.cli status
 """
 from __future__ import annotations
 import argparse, sys, uuid
 from datetime import datetime, timedelta, timezone
 
-from . import db, dyads as dy, match
-from .sources import ucdp, gdelt
+from . import compute as comp, db, dyads as dy, match
+from .sources import ucdp, gdelt, worldbank
 
 
 def cmd_init(args):
@@ -39,20 +41,74 @@ def cmd_pull_gdelt(args):
     ds = dy.load()
     now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
     now -= timedelta(minutes=now.minute % 15)
-    total = 0
+    # Метка последнего обработанного среза. Пропуск уже загруженных обязателен:
+    # события защищены ключом (source, source_id) и повторов не дадут, а вот
+    # суточный объём упоминаний накапливается — повторный срез удвоил бы
+    # знаменатель нормировки и тихо занизил инфополе.
+    seen = db.get_watermark(con, "gdelt_export")
+    newest = seen
+    total = skipped = 0
     for i in range(args.slices):
         stamp = (now - timedelta(minutes=15 * (i + 1))).strftime("%Y%m%d%H%M%S")
+        if seen and stamp <= seen:
+            skipped += 1
+            continue
         blob = gdelt.get(gdelt.slice_url(stamp), use_cache=True)
         if not blob:
             print(f"  {stamp}: срез недоступен, пропуск")
             continue
+        newest = max(newest, stamp)
         norm = gdelt.normalize(gdelt.parse_export(blob))
         norm, stats = match.attribute_all(norm, ds)
         keep = [e for e in norm if e["dyad_id"]]
         total += db.upsert_events(con, keep)
+
+        # Общий объём упоминаний в срезе сохраняем ОТДЕЛЬНО от событий диад.
+        # Это знаменатель нормировки инфополя (правило 5 методологии): без него
+        # индикатор мерит внимание прессы, а не напряжённость. Считается по
+        # всему срезу, включая пары, которые нас не касаются, — в этом весь смысл.
+        day = f"{stamp[:4]}-{stamp[4:6]}-{stamp[6:8]}"
+        db.add_series(con, "gdelt", "global_mentions", day,
+                      sum(e.get("num_mentions") or 1 for e in norm))
         print(f"  {stamp}: пар государств {len(norm)}, отнесено к диадам {len(keep)}")
-    db.set_watermark(con, "gdelt_export", now.strftime("%Y%m%d%H%M%S"))
-    print(f"записано новых событий: {total}")
+    # Метка двигается на реально обработанный срез, а не на «сейчас»: при сбое
+    # сети «сейчас» перескочило бы через недокачанные срезы и потеряло их навсегда.
+    if newest and newest != seen:
+        db.set_watermark(con, "gdelt_export", newest)
+    print(f"записано новых событий: {total}"
+          + (f", пропущено уже загруженных срезов: {skipped}" if skipped else ""))
+
+
+def cmd_pull_weights(args):
+    """Доли населения, ВВП и военных расходов — веса последствий для GEI.
+
+    Раз в год этого достаточно: доли меняются на десятые доли процента, а
+    глобальный индекс к ним не чувствителен. Но без них он не считается вовсе.
+    """
+    con = db.connect(args.db)
+    today = datetime.now(timezone.utc).date().isoformat()
+    for key, code in worldbank.INDICATORS.items():
+        vals = worldbank.fetch(code)
+        sh = worldbank.shares(vals)
+        for iso, share in sh.items():
+            con.execute(
+                "INSERT INTO series(source,series_key,as_of,value) VALUES(?,?,?,?) "
+                "ON CONFLICT(source,series_key,as_of) DO UPDATE SET value=excluded.value",
+                ("worldbank", f"share_{key}:{iso}", today, share))
+        print(f"  {key} ({code}): стран {len(sh)}")
+    con.commit()
+
+
+def cmd_compute(args):
+    """Пересчёт индикаторов и накала. Без него сайт остаётся пустым."""
+    con = db.connect(args.db)
+    r = comp.compute(con, days=args.days)
+    if r.get("note"):
+        print(f"расчёт не выполнен: {r['note']}")
+        return
+    print(f"прогон {r['run_id']}: диад {r['dyads']}, дней {r['days']}, "
+          f"строк накала {r['heat_rows']}, смен фазы {r['phase_changes']}")
+    print(f"  период данных: {r['span']}")
 
 
 def cmd_llm_eval(args):
@@ -88,6 +144,12 @@ def cmd_status(args):
         print(f"  {r['source']:<16} {r['n']:>8} событий  {r['a']} .. {r['b']}")
     for r in con.execute("SELECT * FROM watermarks"):
         print(f"  метка {r['source']}: {r['position']} ({r['updated_at']})")
+    n = con.execute("SELECT COUNT(*) c FROM heat_daily").fetchone()["c"]
+    last = con.execute("SELECT MAX(day) d FROM heat_daily").fetchone()["d"]
+    print(f"  накал рассчитан: строк {n}, последний день {last or '—'}")
+    if not n:
+        print("  ВНИМАНИЕ: расчёт ещё не выполнялся — сайт покажет пустой реестр.")
+        print("            запустите: python -m escx.cli compute")
 
 
 def main(argv=None):
@@ -111,6 +173,13 @@ def main(argv=None):
     e.add_argument("--pred", required=True, help="JSON с разметкой модели")
     e.add_argument("--reject-rate", type=float, default=0.0)
     e.set_defaults(fn=cmd_llm_eval)
+
+    sub.add_parser("pull-weights").set_defaults(fn=cmd_pull_weights)
+
+    c = sub.add_parser("compute")
+    c.add_argument("--days", type=int, default=comp.SERIES_DAYS,
+                   help="сколько последних дней записать в витрину")
+    c.set_defaults(fn=cmd_compute)
 
     sub.add_parser("status").set_defaults(fn=cmd_status)
 
