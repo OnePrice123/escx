@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESCX — общая схема</title>
+<style>
+:root{
+  --bg:#0B0C0E; --surface:#131518; --surface-2:#191C20;
+  --text:#E8E8E6; --text-2:#8A8E94; --text-3:#5F646B;
+  --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.16);
+  --cold:#4A6E8A; --warm:#C9A227; --hot:#D97706; --red:#B4231E;
+  --mono:"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
+  --sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+[data-theme="light"]{
+  --bg:#FAFAF9; --surface:#FFFFFF; --surface-2:#F1F1EF;
+  --text:#17181A; --text-2:#61656B; --text-3:#8E9298;
+  --line:rgba(0,0,0,.11); --line-2:rgba(0,0,0,.2);
+  --cold:#3C5C75; --warm:#A6841D; --hot:#B8630A; --red:#9C1D19;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;
+  line-height:1.5;-webkit-font-smoothing:antialiased}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+
+.page{max-width:1120px;margin:0 auto;padding:26px 24px 60px}
+header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+h1{font-size:19px;font-weight:600;letter-spacing:-.01em}
+.sub{color:var(--text-2);font-size:12px}
+.themeBtn{margin-left:auto;font-size:11px;color:var(--text-2);border:1px solid var(--line);
+  border-radius:4px;padding:4px 9px}
+.themeBtn:hover{color:var(--text);border-color:var(--line-2)}
+.lede{color:var(--text-2);font-size:13px;max-width:760px;margin:10px 0 26px;line-height:1.65}
+
+.grid{display:grid;grid-template-columns:1fr 258px;gap:26px;align-items:start}
+
+/* ---- поток ---- */
+.flow{position:relative;padding-left:30px}
+.flow::before{content:"";position:absolute;left:9px;top:14px;bottom:52px;width:1px;background:var(--line)}
+.step{position:relative;margin-bottom:12px}
+.step::before{content:"";position:absolute;left:-25px;top:15px;width:9px;height:9px;
+  border-radius:50%;background:var(--bg);border:1px solid var(--line-2)}
+.step.key::before{background:var(--text);border-color:var(--text)}
+.box{border:1px solid var(--line);padding:11px 14px 12px;background:var(--surface)}
+.step.key .box{border-color:var(--line-2)}
+.stepno{font-family:var(--mono);font-size:10px;color:var(--text-3);letter-spacing:.06em}
+.title{font-size:14px;font-weight:600;margin:1px 0 6px}
+.title span{font-weight:400;font-size:12px;color:var(--text-2);margin-left:7px}
+.body{font-size:12px;color:var(--text-2);line-height:1.65}
+.body b{color:var(--text);font-weight:600}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.tag{font-size:11px;border:1px solid var(--line);border-radius:3px;padding:2px 7px;color:var(--text-2)}
+.tag.no{border-style:dashed;color:var(--text-3);text-decoration:line-through}
+.tag.mono{font-family:var(--mono);font-size:10px}
+.note{font-size:11px;color:var(--text-3);margin-top:7px;padding-left:10px;
+  border-left:2px solid var(--line)}
+
+/* ---- четыре числа ---- */
+.four{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+  border:1px solid var(--line);margin-top:8px}
+.four > div{background:var(--bg);padding:9px 10px}
+.four .k{font-size:10px;letter-spacing:.07em;color:var(--text-3)}
+.four .v{font-size:17px;font-weight:600;margin:2px 0 1px;letter-spacing:-.02em}
+.four .w{font-size:10px;color:var(--text-2);line-height:1.45}
+
+/* ---- блоки веса ---- */
+.blocks{margin-top:8px;display:flex;flex-direction:column;gap:3px}
+.brow{display:grid;grid-template-columns:150px 1fr 34px;gap:9px;align-items:center;font-size:11px}
+.brow .n{color:var(--text-2)}
+.bar{height:4px;background:var(--surface-2)}
+.bar span{display:block;height:100%}
+.brow .w{font-family:var(--mono);font-size:10px;color:var(--text-3);text-align:right}
+
+/* ---- рельса правил ---- */
+.rail{position:sticky;top:20px}
+.rail h2{font-size:11px;letter-spacing:.09em;color:var(--text-3);font-weight:600;
+  padding-bottom:7px;border-bottom:1px solid var(--line);margin-bottom:2px}
+.rule{display:grid;grid-template-columns:17px 1fr;gap:8px;padding:8px 0;
+  border-bottom:1px solid var(--line);font-size:11.5px;color:var(--text-2);line-height:1.55}
+.rule i{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--text-3)}
+.rule b{color:var(--text);font-weight:600}
+.railnote{font-size:11px;color:var(--text-3);margin-top:12px;line-height:1.6}
+
+.cost{margin-top:20px;border:1px solid var(--line);padding:11px 13px}
+.cost h3{font-size:11px;letter-spacing:.09em;color:var(--text-3);font-weight:600;margin-bottom:7px}
+.crow{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-2);padding:3px 0}
+.crow b{color:var(--text);font-weight:600;font-family:var(--mono)}
+.ctot{border-top:1px solid var(--line);margin-top:5px;padding-top:6px}
+
+footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:11px;color:var(--text-3);line-height:1.7}
+
+@media(max-width:880px){
+  .grid{grid-template-columns:1fr}
+  .rail{position:static}
+  .four{grid-template-columns:repeat(2,1fr)}
+  .brow{grid-template-columns:120px 1fr 32px}
+}
+@media print{
+  body{background:#fff;color:#000}
+  .themeBtn{display:none}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>ESCX — как это работает целиком</h1>
+  <span class="sub">одна страница · август 2026</span>
+  <button class="themeBtn" id="tb">Светлая</button>
+</header>
+
+<p class="lede">
+Слева — путь от сырых данных к тому, что видит пользователь. Справа — восемь правил,
+которые действуют на каждом шаге сразу: они и есть то, что отличает расчёт от гадания.
+Читать сверху вниз.
+</p>
+
+<div class="grid">
+
+<!-- ================= ПОТОК ================= -->
+<div class="flow">
+
+  <div class="step">
+    <div class="box">
+      <div class="stepno">01</div>
+      <div class="title">Источники <span>что берём и почём</span></div>
+      <div class="body">
+        Только открытые данные. Ничего платного на старте — это не экономия,
+        а условие, при котором проект вообще возможен в одиночку.
+      </div>
+      <div class="tags">
+        <span class="tag">UCDP — события и боевые смерти с 1989</span>
+        <span class="tag">GDELT — поток новостей каждые 15 мин</span>
+        <span class="tag">санкционные реестры</span>
+        <span class="tag">NOTAM</span>
+        <span class="tag">голосования ГА ООН</span>
+        <span class="tag">SIPRI</span>
+        <span class="tag">GPR Index (CC BY)</span>
+        <span class="tag no">ACLED</span>
+      </div>
+      <div class="note">ACLED исключён: его условия прямо запрещают проекты нашего типа.
+      Не осторожность, а требование лицензии.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="box">
+      <div class="stepno">02</div>
+      <div class="title">Сбор <span>скучный стек, ноль зависимостей</span></div>
+      <div class="body">
+        Python из стандартной библиотеки, SQLite, GitHub Actions по расписанию.
+        Никаких Kafka и Airflow: их операционная стоимость съест бюджет времени
+        раньше, чем даст пользу.
+      </div>
+      <div class="tags">
+        <span class="tag mono">идемпотентность по (source, id)</span>
+        <span class="tag mono">watermark = инкрементальность</span>
+        <span class="tag mono">append-only на триггерах БД</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="step key">
+    <div class="box">
+      <div class="stepno">03</div>
+      <div class="title">Разбор текста <span>здесь и только здесь работает ИИ</span></div>
+      <div class="body">
+        Новость превращается в типизированное событие: вид признака, ступень
+        эскалации 0–4 по якорной рубрике, стороны, дословная цитата-подтверждение.
+        <b>Модель извлекает факты. Модель не производит вероятность.</b>
+      </div>
+      <div class="tags">
+        <span class="tag mono">prefilter → отсекает ~95 %</span>
+        <span class="tag mono">кэш по хэшу + версия промпта</span>
+        <span class="tag mono">лимит расходов в коде</span>
+        <span class="tag mono">цитата не найдена → брак</span>
+      </div>
+      <div class="note">Индикатор попадает в индекс только когда согласие с ручной
+      разметкой пройдёт порог: взвешенная каппа ≥ 0.65.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="box">
+      <div class="stepno">04</div>
+      <div class="title">Сопоставление с диадой <span>самое хрупкое место</span></div>
+      <div class="body">
+        Событие относится к паре государств правилом, по географии или арбитражем
+        модели — и каждый способ помечается. Несопоставленные не выбрасываются,
+        а считаются: рост их доли означает поломку.
+      </div>
+      <div class="tags">
+        <span class="tag mono">rule</span><span class="tag mono">geo</span>
+        <span class="tag mono">llm</span><span class="tag mono">unmatched</span>
+      </div>
+      <div class="note">Три источника — три разные системы кодов стран
+      (GW / CAMEO / ISO3). Без таблицы соответствий события молча уезжают не в те диады.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="box">
+      <div class="stepno">05</div>
+      <div class="title">Расчёт накала <span>пять блоков → одно число</span></div>
+      <div class="body">
+        Каждый индикатор нормируется по собственной пятилетней истории диады
+        через медиану и MAD, блоки складываются с весами.
+      </div>
+      <div class="blocks">
+        <div class="brow"><span class="n">Кинетика</span>
+          <span class="bar"><span style="width:100%;background:var(--red)"></span></span>
+          <span class="w">0.35</span></div>
+        <div class="brow"><span class="n">Военные приготовления</span>
+          <span class="bar"><span style="width:57%;background:var(--hot)"></span></span>
+          <span class="w">0.20</span></div>
+        <div class="brow"><span class="n">Дипломатия</span>
+          <span class="bar"><span style="width:43%;background:var(--warm)"></span></span>
+          <span class="w">0.15</span></div>
+        <div class="brow"><span class="n">Экономическое давление</span>
+          <span class="bar"><span style="width:43%;background:var(--warm)"></span></span>
+          <span class="w">0.15</span></div>
+        <div class="brow"><span class="n">Информационное поле</span>
+          <span class="bar"><span style="width:43%;background:var(--cold)"></span></span>
+          <span class="w">0.15</span></div>
+      </div>
+      <div class="note">Инфополе весит мало намеренно: медиапоток — самый быстрый
+      и самый лживый сигнал, он измеряет внимание, а не риск.</div>
+    </div>
+  </div>
+
+  <div class="step key">
+    <div class="box">
+      <div class="stepno">06</div>
+      <div class="title">Четыре числа на диаду <span>каждое считает свой механизм</span></div>
+      <div class="four">
+        <div><div class="k">ФАЗА · L</div><div class="v num">0–6</div>
+          <div class="w">правила и пороги UCDP, смену подтверждает человек</div></div>
+        <div><div class="k">НАКАЛ · H</div><div class="v num">0–100</div>
+          <div class="w">формула из наблюдаемых величин, две шкалы: abs и rel</div></div>
+        <div><div class="k">ТЕМП · ΔH</div><div class="v num">↑ ↓ ❄</div>
+          <div class="w">производная: нагрев, разрядка, заморозка</div></div>
+        <div><div class="k">ВЕРОЯТНОСТЬ · P</div><div class="v num">%</div>
+          <div class="w">обученная модель, не LLM; проверяется по Brier</div></div>
+      </div>
+      <div class="note">Уровень и производная — разные числа. Замороженный конфликт
+      и мирные переговоры дают одинаковый нулевой темп, но фазу 4 и фазу 1.
+      Один индикатор их не различит.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="box">
+      <div class="stepno">07</div>
+      <div class="title">Глобальный индекс <span>агрегат по всем диадам</span></div>
+      <div class="body">
+        Не среднее арифметическое, а взвешенное по последствиям: доли сторон
+        в мировом населении, ВВП и военных расходах, множитель за ядерный статус
+        и за плотность союзных обязательств.
+      </div>
+      <div class="tags">
+        <span class="tag mono">GEI = Σ(c·H) / Σc</span>
+        <span class="tag">ось: кинетика</span>
+        <span class="tag">ось: крупные державы</span>
+        <span class="tag">ось: стратегический риск</span>
+      </div>
+      <div class="note">Только третья ось относится к сценарию мировой войны.
+      «Вероятность третьей мировой» не публикуется: событие не определено
+      операционально, значит непроверяемо.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="box">
+      <div class="stepno">08</div>
+      <div class="title">Что видит пользователь</div>
+      <div class="body">
+        Экран «Мир» с глобальной дугой · лента, отсортированная по изменению,
+        а не по уровню · карточка диады с раскрытием до сырого события ·
+        публичная страница калибровки · алерты и API.
+      </div>
+      <div class="tags">
+        <span class="tag">Free — топ-20 диад, задержка сутки</span>
+        <span class="tag">Pro $29</span>
+        <span class="tag">Team $99</span>
+        <span class="tag">API $299</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================= РЕЛЬСА ПРАВИЛ ================= -->
+<div class="rail">
+  <h2>ДЕЙСТВУЕТ НА КАЖДОМ ШАГЕ</h2>
+
+  <div class="rule"><i>1</i><div><b>Раскрытие до источника.</b> Число, которое нельзя
+    докликнуть до сырого события, не публикуется.</div></div>
+  <div class="rule"><i>2</i><div><b>Нет прогноза без интервала</b> и без явного условия
+    разрешения.</div></div>
+  <div class="rule"><i>3</i><div><b>Базовая ставка первой.</b> Модель — поправка
+    к исторической частоте, а не откровение с нуля.</div></div>
+  <div class="rule"><i>4</i><div><b>ФАКТ · ОЦЕНКА · МНЕНИЕ</b> различаются визуально
+    и никогда не смешиваются.</div></div>
+  <div class="rule"><i>5</i><div><b>Нормировка на медиавнимание.</b> Иначе крупные сюжеты
+    вечно ярче — не потому что опаснее.</div></div>
+  <div class="rule"><i>6</i><div><b>Нет данных ≠ нет риска.</b> Покрытие ниже 40 % —
+    индекс серый и с предупреждением.</div></div>
+  <div class="rule"><i>7</i><div><b>Человек подтверждает смену фазы.</b> Автоматика
+    предлагает, решение логируется.</div></div>
+  <div class="rule"><i>8</i><div><b>Версионируется всё.</b> Смена весов — пересчёт
+    истории, старая версия остаётся доступна.</div></div>
+
+  <p class="railnote">Сквозной инвариант: журнал прогнозов только пополняется.
+  Опубликованное значение не редактируется задним числом никогда — исправление
+  оформляется новой записью со ссылкой на исходную. Из этого и вырастает публичный
+  Brier, который конкурент не скопирует без тех же полутора лет.</p>
+
+  <div class="cost">
+    <h3>ЧТО ЭТО СТОИТ В МЕСЯЦ</h3>
+    <div class="crow"><span>Хостинг и база</span><b>$45</b></div>
+    <div class="crow"><span>BigQuery</span><b>$30</b></div>
+    <div class="crow"><span>LLM-скоринг</span><b>$60</b></div>
+    <div class="crow"><span>Прочее и резерв</span><b>$65</b></div>
+    <div class="crow ctot"><span>Итого</span><b>$200</b></div>
+    <div class="crow"><span>Безубыточность</span><b>7 подписок</b></div>
+  </div>
+</div>
+
+</div>
+
+<footer>
+  Полностью — в документах: методология · бизнес-план · техплан · сбор данных · ИИ в контуре.<br>
+  Опоры: UCDP/PRIO (пороги 25 и 1000 боевых смертей) · GDELT (CAMEO, Goldstein) ·
+  Caldara &amp; Iacoviello GPR (CC BY) · AI-GPR (FRBSF, 2026) · VIEWS (Uppsala/PRIO) ·
+  Crisis Group CrisisWatch
+</footer>
+
+</div>
+<script>
+const tb=document.getElementById('tb');
+tb.onclick=()=>{const l=document.documentElement.dataset.theme==='light';
+  document.documentElement.dataset.theme=l?'dark':'light';tb.textContent=l?'Светлая':'Тёмная';};
+</script>
+</body>
+</html>
