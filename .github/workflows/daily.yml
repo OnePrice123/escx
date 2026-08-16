@@ -51,12 +51,30 @@ jobs:
 
       - run: cd ingest && python -m escx.cli init
 
-      - name: догрузить UCDP за последний месяц
+      # Предварительные данные текущего года: месячный файл, открытый, без токена.
+      # Финальный GED выходит раз в год, поэтому свежие события бывают только здесь.
+      # Файл один и тот же в течение месяца — повторная загрузка ничего не портит,
+      # ключ (source, source_id) отсекает уже записанное.
+      - name: догрузить свежие данные UCDP
+        run: cd ingest && python -m escx.cli pull-candidate
+
+      # Если базы ещё нет (первый прогон, кэш пропал), тянем полную историю.
+      # Проверка по числу событий, а не по наличию файла: пустая база — тоже
+      # отсутствие истории.
+      - name: подхватить историю, если база пуста
         run: |
           cd ingest
-          END=$(date -u +%Y-%m-%d)
-          START=$(date -u -d '35 days ago' +%Y-%m-%d)
-          python -m escx.cli backfill-ucdp --start "$START" --end "$END"
+          N=$(python - <<'PY'
+          from escx import db
+          con = db.connect("escx.db")
+          print(con.execute("SELECT COUNT(*) c FROM raw_events").fetchone()["c"])
+          PY
+          )
+          echo "событий в базе: $N"
+          if [ "$N" -lt 1000 ]; then
+            echo "истории нет — загружаю полную выгрузку"
+            python -m escx.cli load-ucdp
+          fi
 
       # Доли населения, ВВП и военных расходов. Без них глобальный индекс не
       # считается вовсе. Меняются раз в год, но запрос дешёвый — берём каждый раз.

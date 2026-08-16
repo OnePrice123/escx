@@ -17,7 +17,8 @@ def _key(url: str) -> Path:
 
 
 def get(url: str, *, retries: int = 4, timeout: int = 60,
-        use_cache: bool = True, pause: float = 0.4) -> bytes:
+        use_cache: bool = True, pause: float = 0.4,
+        headers: dict[str, str] | None = None) -> bytes:
     """GET с ретраями. Возвращает сырые байты.
 
     Осознанно НЕ поднимает исключение на 404: у файловых потоков (GDELT) отсутствие
@@ -34,7 +35,7 @@ def get(url: str, *, retries: int = 4, timeout: int = 60,
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers={
-                "User-Agent": UA, "Accept-Encoding": "gzip"})
+                "User-Agent": UA, "Accept-Encoding": "gzip", **(headers or {})})
             with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
                 raw = r.read()
                 if r.headers.get("Content-Encoding") == "gzip":
@@ -46,6 +47,13 @@ def get(url: str, *, retries: int = 4, timeout: int = 60,
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return b""
+            if e.code in (401, 403):
+                # Отдельно от прочих ошибок: это не сбой сети, повторять
+                # бессмысленно, а текст должен объяснять, что делать.
+                raise PermissionError(
+                    f"{e.code} на {url}: источник требует авторизации. "
+                    f"Для UCDP это токен в переменной UCDP_TOKEN "
+                    f"(https://ucdp.uu.se/apidocs/)") from e
             if e.code in (429, 500, 502, 503, 504):
                 last = e
                 time.sleep(2 ** attempt * 1.5)

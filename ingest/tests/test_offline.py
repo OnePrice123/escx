@@ -111,12 +111,62 @@ check("внутригосударственное событие отсеяно"
 
 print("\n8. Нормализация UCDP")
 u = ucdp.normalize([{"id":88,"date_start":"2026-07-02 00:00:00.000",
-                     "side_a_new_id":750,"side_b_new_id":770,"type_of_violence":1,
+                     "gwnoa":750,"gwnob":770,
+                     "side_a_new_id":141,"side_b_new_id":300,"type_of_violence":1,
                      "best":4,"date_prec":1,"latitude":34.0,"longitude":74.5,
                      "country":"India","side_a":"Government of India"}])
 check("id и дата разобраны", u[0]["source_id"] == "88" and u[0]["occurred_at"] == "2026-07-02")
 check("GW-коды переведены", (u[0]["actor_a"], u[0]["actor_b"]) == ("IND","PAK"))
+# side_a_new_id — идентификатор актора, а не код страны. Совпадение номеров
+# с кодами Гледича–Уорда случайно и приписало бы событие чужому государству.
+u2 = ucdp.normalize([{"id":89,"date_start":"2026-07-02","side_a_new_id":750,
+                      "side_b_new_id":770,"type_of_violence":2,"best":1}])
+check("идентификатор актора не принимается за код страны",
+      (u2[0]["actor_a"], u2[0]["actor_b"]) == (None, None), (u2[0]["actor_a"], u2[0]["actor_b"]))
+
+print("\n8a. Разбор готовой выгрузки UCDP")
+row = {"id":"5","best":"12","date_prec":"1","latitude":"34,0".replace(",","."),
+       "longitude":"74.5","gwnoa":"750","gwnob":"770","type_of_violence":"1",
+       "deaths_a":"NA","side_a_new_id":""}
+typed = ucdp._typed(row)
+check("числа приведены из строк", typed["best"] == 12 and typed["id"] == 5)
+check("координаты стали числами", typed["latitude"] == 34.0)
+check("NA и пустые значения стали None",
+      typed["deaths_a"] is None and typed["side_a_new_id"] is None)
+check("строка выгрузки нормализуется как строка API",
+      ucdp.normalize([typed])[0]["actor_a"] == "IND")
 check("payload сериализован", json.loads(u[0]["payload"])["country"] == "India")
+
+print("\n8b. Чтение zip-выгрузки без сети")
+import io as _io, zipfile as _zip, csv as _csv
+_buf = _io.StringIO()
+_w = _csv.DictWriter(_buf, fieldnames=["id","date_start","gwnoa","gwnob","best",
+                                       "date_prec","latitude","longitude",
+                                       "type_of_violence","deaths_a"])
+_w.writeheader()
+_w.writerow({"id":"1","date_start":"2025-03-01","gwnoa":"750","gwnob":"770","best":"7",
+             "date_prec":"1","latitude":"34.1","longitude":"74.2",
+             "type_of_violence":"1","deaths_a":"NA"})
+_z = _io.BytesIO()
+with _zip.ZipFile(_z, "w") as _zf:
+    _zf.writestr("GEDEvent_v26_1.csv", _buf.getvalue())
+_blob = _z.getvalue()
+_real_get = ucdp.get
+ucdp.get = lambda url, **kw: _blob if "ged261" in url else b""
+ucdp._resolved = None
+_v = ucdp.resolve_bulk_version()
+_rows = list(ucdp.iter_bulk_ged(_v))
+check("версия выгрузки определяется по факту скачивания", _v == "26.1", _v)
+check("zip разобран", len(_rows) == 1 and _rows[0]["best"] == 7)
+check("выгрузка и API дают одинаковую форму строки",
+      ucdp.normalize(_rows)[0]["actor_a"] == "IND")
+ucdp._resolved = None
+ucdp.get = lambda url, **kw: b""
+check("нет ни одной доступной версии -> None, а не исключение",
+      ucdp.resolve_bulk_version() is None)
+ucdp.get = _real_get
+ucdp._resolved = None
+
 
 print("\n9. Хранилище: идемпотентность и append-only")
 import tempfile, os, sqlite3

@@ -1,7 +1,9 @@
 """Точка входа. Команды запускаются из cron или GitHub Actions.
 
   python -m escx.cli init
-  python -m escx.cli backfill-ucdp --start 2015-01-01 --end 2024-12-31
+  python -m escx.cli load-ucdp                 # вся история из открытой выгрузки
+  python -m escx.cli pull-candidate            # предварительные данные этого года
+  python -m escx.cli backfill-ucdp --start 2015-01-01 --end 2024-12-31   # через API, нужен токен
   python -m escx.cli pull-gdelt --slices 8
   python -m escx.cli pull-weights
   python -m escx.cli compute
@@ -25,15 +27,102 @@ def cmd_init(args):
 def cmd_backfill_ucdp(args):
     con = db.connect(args.db)
     ds = dy.load()
-    print(f"UCDP GED {ucdp.VERSION}: {args.start} .. {args.end}")
-    rows = ucdp.fetch_ged(start=args.start, end=args.end)
+    # Версия датасета сверяется с API до загрузки. Иначе устаревший номер
+    # молча отдаёт ноль событий, и прогон выглядит успешным при пустой базе.
+    version = ucdp.resolve_version()
+    if not version:
+        sys.exit("API UCDP недоступно. С 2026 года оно требует токен: положите его "
+                 "в переменную окружения UCDP_TOKEN (как получить — "
+                 "https://ucdp.uu.se/apidocs/).\n"
+                 "Токен нужен НЕ ВСЕГДА: те же данные лежат открытыми файлами. "
+                 "Используйте `python -m escx.cli load-ucdp` — истории он берёт "
+                 "оттуда и работает без токена.")
+    if version != ucdp.VERSION:
+        print(f"  ВНИМАНИЕ: версия {ucdp.VERSION} недоступна, работаю на {version}. "
+              f"Обновите VERSION в escx/sources/ucdp.py")
+    print(f"UCDP GED {version}: {args.start} .. {args.end}")
+    rows = ucdp.fetch_ged(start=args.start, end=args.end, version=version)
     print(f"  получено событий: {len(rows)}")
+    if not rows:
+        print("  за период событий нет — это возможно для короткого промежутка, "
+              "но подозрительно для целого года")
     norm = ucdp.normalize(rows)
     norm, stats = match.attribute_all(norm, ds)
     n = db.upsert_events(con, norm)
     print(f"  записано новых: {n}")
     print(f"  сопоставление: rule={stats['rule']} geo={stats['geo']} "
           f"unmatched={stats['unmatched']} ({stats['unmatched_share']:.1%})")
+
+
+def _ingest_batches(con, ds, rows_iter, source: str, batch: int = 20000,
+                    since: str = "", until: str = "") -> tuple[int, int]:
+    """Общий конвейер для потоковой загрузки: партия -> нормализация -> база.
+
+    Партиями, а не целиком: в полном GED около 400 тысяч событий, и список
+    словарей такого размера занимает под гигабайт. Партия в двадцать тысяч
+    держит память ровной и не мешает идемпотентности — ключ (source, source_id)
+    всё равно отсекает повторы.
+    """
+    total = seen = 0
+    buf: list[dict] = []
+
+    def flush():
+        nonlocal total
+        if not buf:
+            return
+        norm = ucdp.normalize(buf, source=source)
+        if since or until:
+            norm = [e for e in norm if (not since or e["occurred_at"] >= since)
+                    and (not until or e["occurred_at"] <= until)]
+        norm, _ = match.attribute_all(norm, ds)
+        total += db.upsert_events(con, norm)
+        buf.clear()
+
+    for row in rows_iter:
+        buf.append(row)
+        seen += 1
+        if len(buf) >= batch:
+            flush()
+            print(f"  обработано {seen}, записано новых {total}", flush=True)
+    flush()
+    return seen, total
+
+
+def cmd_load_ucdp(args):
+    """Полная история из открытой выгрузки. Токен не нужен.
+
+    С 2026 года API UCDP требует токен, а готовые файлы — нет. Для истории
+    файлы и удобнее: один zip вместо четырёхсот страничных запросов.
+    """
+    con = db.connect(args.db)
+    ds = dy.load()
+    v = ucdp.resolve_bulk_version()
+    if not v:
+        sys.exit("выгрузка UCDP недоступна ни в одной известной версии "
+                 f"({', '.join(ucdp.VERSION_CANDIDATES)}). "
+                 "Проверьте https://ucdp.uu.se/downloads/ — вероятно, вышла новая "
+                 "версия, её номер добавляется в escx/sources/ucdp.py")
+    print(f"UCDP GED {v} (готовая выгрузка, ~50 МБ) — качаю")
+    seen, total = _ingest_batches(con, ds, ucdp.iter_bulk_ged(v), "ucdp_ged",
+                                  since=args.start or "", until=args.end or "")
+    print(f"прочитано событий: {seen}, записано новых: {total}")
+    if not seen:
+        sys.exit("выгрузка пуста — это не бывает штатно, прогон остановлен")
+
+
+def cmd_pull_candidate(args):
+    """Предварительные данные за текущий год: месячные файлы, тоже без токена."""
+    con = db.connect(args.db)
+    ds = dy.load()
+    year = args.year or datetime.now(timezone.utc).year
+    month = args.month or ucdp.latest_candidate(year)
+    if not month:
+        print(f"за {year} год кандидатских файлов ещё нет — пропуск")
+        return
+    print(f"UCDP Candidate {year}-{month:02d}")
+    seen, total = _ingest_batches(con, ds, ucdp.iter_candidate(year, month),
+                                  "ucdp_candidate")
+    print(f"прочитано событий: {seen}, записано новых: {total}")
 
 
 def cmd_pull_gdelt(args):
@@ -163,6 +252,16 @@ def main(argv=None):
     b.add_argument("--start", required=True)
     b.add_argument("--end", required=True)
     b.set_defaults(fn=cmd_backfill_ucdp)
+
+    lu = sub.add_parser("load-ucdp", help="полная история из открытой выгрузки")
+    lu.add_argument("--start", default="", help="отсечь события раньше даты")
+    lu.add_argument("--end", default="", help="отсечь события позже даты")
+    lu.set_defaults(fn=cmd_load_ucdp)
+
+    pc = sub.add_parser("pull-candidate", help="предварительные данные текущего года")
+    pc.add_argument("--year", type=int)
+    pc.add_argument("--month", type=int)
+    pc.set_defaults(fn=cmd_pull_candidate)
 
     g = sub.add_parser("pull-gdelt")
     g.add_argument("--slices", type=int, default=4)
