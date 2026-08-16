@@ -36,6 +36,7 @@ python3 -m http.server -d site 8000
 
 # API подписок
 node api/test/test.mjs          # 59 проверок, сеть не нужна
+bash api/setup.sh               # развернуть на Cloudflare (идемпотентно)
 
 # сборщик данных
 cd ingest

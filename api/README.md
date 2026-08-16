@@ -13,12 +13,27 @@ D1 подменяется заглушкой, `crypto` берётся из Node 
 ## Развёртывание
 
 ```bash
-wrangler d1 create escx
+bash setup.sh
+```
+
+Скрипт идемпотентный: ставит wrangler, гоняет тесты, создаёт базу D1,
+вписывает её идентификатор в `wrangler.toml`, применяет схему, спрашивает секреты
+и публикует. Повторный запуск ничего не ломает.
+
+Вручную, если нужен контроль по шагам:
+
+```bash
+wrangler login
+wrangler d1 create escx                 # id из вывода вписать в wrangler.toml
 wrangler d1 execute escx --file=schema.sql --remote
 wrangler secret put PADDLE_WEBHOOK_SECRET
 wrangler secret put RESEND_API_KEY
 wrangler deploy
 ```
+
+Домен для запуска не нужен: `workers_dev = true` даёт бесплатный адрес
+`escx-api.<поддомен>.workers.dev`. Свой домен подключается позже — заменить
+`SITE_URL` и раскомментировать `routes`.
 
 ## Что где
 
