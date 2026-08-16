@@ -101,8 +101,27 @@ jobs:
           cp site/data/index.json data/latest.json
           git config user.name  "escx-bot"
           git config user.email "bot@users.noreply.github.com"
-          # git add -A по всему дереву: база и кэш закрыты .gitignore, а корень
-          # с собранным сайтом обязан уехать целиком — именно он и публикуется.
           git add -A
-          git diff --staged --quiet || git commit -m "данные: снимок $(date -u +%Y-%m-%d)"
-          git push
+          if git diff --staged --quiet; then
+            echo "изменений нет — публиковать нечего"
+            exit 0
+          fi
+          git commit -m "данные: снимок $(date -u +%Y-%m-%d)"
+          # Пока прогон шёл (а он идёт минутами), в ветку могли прилететь чужие
+          # коммиты — ваша заливка или соседний прогон. Тогда push отклоняется
+          # как non-fast-forward, и вся работа пропадает на последнем шаге.
+          # Поэтому: подтянуть чужое ребейзом и попробовать снова.
+          #
+          # -X theirs при ребейзе означает «наш коммит важнее»: стороны в ребейзе
+          # переставлены местами. Для собранного сайта это и нужно — свежая
+          # сборка обязана победить то, что лежало в репозитории до неё.
+          for i in 1 2 3; do
+            if git push; then
+              echo "опубликовано"
+              exit 0
+            fi
+            echo "push отклонён, подтягиваю чужие изменения (попытка $i)"
+            git pull --rebase -X theirs origin "${{ github.ref_name }}"
+          done
+          echo "не удалось опубликовать после трёх попыток"
+          exit 1
