@@ -34,6 +34,12 @@ from ..codes import from_cameo
 
 ROOT = "http://data.gdeltproject.org/gdeltv2"
 
+# GDELT 1.0 — один файл на СУТКИ вместо 96 срезов. Нужен только для истории:
+# восстанавливать 90 дней пятнадцатиминутками значит скачать 8640 файлов,
+# дневными — 90. Живой поток по-прежнему берётся из 2.0, потому что 1.0
+# обновляется раз в сутки и для «сегодня» бесполезен.
+ROOT_V1 = "http://data.gdeltproject.org/events"
+
 # Колонки CSV export не имеют заголовка. Порядок задан кодбуком GDELT 2.0.
 EXPORT_COLS = [
  "GLOBALEVENTID","SQLDATE","MonthYear","Year","FractionDate",
@@ -74,8 +80,35 @@ def slice_url(stamp: str, kind: str = "export") -> str:
     return f"{ROOT}/{stamp}.{ext}"
 
 
-def parse_export(blob: bytes) -> list[dict]:
-    """Разбирает zip со срезом export в список словарей."""
+# Колонки GDELT 1.0. Отличие от 2.0 ровно одно: в трёх гео-блоках нет ADM2Code,
+# отсюда 58 полей вместо 61. Имена совпадают, поэтому normalize() ниже работает
+# с обоими форматами без единой развилки.
+EXPORT_COLS_V1 = [
+ "GLOBALEVENTID","SQLDATE","MonthYear","Year","FractionDate",
+ "Actor1Code","Actor1Name","Actor1CountryCode","Actor1KnownGroupCode",
+ "Actor1EthnicCode","Actor1Religion1Code","Actor1Religion2Code",
+ "Actor1Type1Code","Actor1Type2Code","Actor1Type3Code",
+ "Actor2Code","Actor2Name","Actor2CountryCode","Actor2KnownGroupCode",
+ "Actor2EthnicCode","Actor2Religion1Code","Actor2Religion2Code",
+ "Actor2Type1Code","Actor2Type2Code","Actor2Type3Code",
+ "IsRootEvent","EventCode","EventBaseCode","EventRootCode","QuadClass",
+ "GoldsteinScale","NumMentions","NumSources","NumArticles","AvgTone",
+ "Actor1Geo_Type","Actor1Geo_FullName","Actor1Geo_CountryCode","Actor1Geo_ADM1Code",
+ "Actor1Geo_Lat","Actor1Geo_Long","Actor1Geo_FeatureID",
+ "Actor2Geo_Type","Actor2Geo_FullName","Actor2Geo_CountryCode","Actor2Geo_ADM1Code",
+ "Actor2Geo_Lat","Actor2Geo_Long","Actor2Geo_FeatureID",
+ "ActionGeo_Type","ActionGeo_FullName","ActionGeo_CountryCode","ActionGeo_ADM1Code",
+ "ActionGeo_Lat","ActionGeo_Long","ActionGeo_FeatureID",
+ "DATEADDED","SOURCEURL"]
+
+
+def daily_url_v1(day: str) -> str:
+    """day — 'YYYY-MM-DD' или 'YYYYMMDD'. Дневной файл GDELT 1.0."""
+    d = day.replace("-", "")
+    return f"{ROOT_V1}/{d}.export.CSV.zip"
+
+
+def _parse(blob: bytes, cols: list[str]) -> list[dict]:
     if not blob:
         return []
     with zipfile.ZipFile(io.BytesIO(blob)) as z:
@@ -83,10 +116,22 @@ def parse_export(blob: bytes) -> list[dict]:
         raw = z.read(name).decode("utf-8", "replace")
     rows = []
     for rec in csv.reader(io.StringIO(raw), delimiter="\t"):
-        if len(rec) < len(EXPORT_COLS):
+        # Сравнение нестрогое: GDELT изредка дописывает колонки в конец, и
+        # жёсткое равенство молча выбросило бы весь файл целиком.
+        if len(rec) < len(cols):
             continue
-        rows.append(dict(zip(EXPORT_COLS, rec)))
+        rows.append(dict(zip(cols, rec)))
     return rows
+
+
+def parse_export(blob: bytes) -> list[dict]:
+    """Разбирает zip со срезом export (GDELT 2.0) в список словарей."""
+    return _parse(blob, EXPORT_COLS)
+
+
+def parse_daily_v1(blob: bytes) -> list[dict]:
+    """Разбирает суточный zip GDELT 1.0. Формат полей — как у 2.0, без ADM2."""
+    return _parse(blob, EXPORT_COLS_V1)
 
 
 def normalize(rows: list[dict]) -> list[dict]:

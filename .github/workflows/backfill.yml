@@ -19,6 +19,9 @@ on:
       end:
         description: "отсечь события позже этой даты (пусто = без ограничения)"
         default: ""
+      gdelt_days:
+        description: "сколько суток истории GDELT догрузить (0 = не трогать)"
+        default: "120"
 
 permissions:
   contents: write
@@ -77,6 +80,29 @@ jobs:
       - name: веса последствий
         continue-on-error: true
         run: cd ingest && python -m escx.cli pull-weights
+
+      # История GDELT из суточных файлов 1.0.
+      #
+      # Почему это здесь, а не в ежедневном прогоне: GDELT — единственный
+      # источник, покрывающий текущий год (открытые файлы UCDP заканчиваются
+      # прошлым декабрём), а его история жила ТОЛЬКО в кэше Actions и нигде
+      # больше. Потеря кэша означала безвозвратную потерю всего года.
+      #
+      # Суточными файлами, а не срезами по 15 минут: 120 суток — это 120
+      # запросов вместо 11 520. Повтор по уже загруженным суткам безопасен,
+      # они помечены и пропускаются.
+      - name: догрузить историю GDELT
+        continue-on-error: true
+        run: |
+          cd ingest
+          D="${{ inputs.gdelt_days }}"
+          if [ "${D:-0}" -gt 0 ]; then
+            python -m escx.cli backfill-gdelt \
+              --start "$(date -u -d "$D days ago" +%Y-%m-%d)" \
+              --end   "$(date -u -d '1 day ago'   +%Y-%m-%d)"
+          else
+            echo "gdelt_days=0 — пропуск"
+          fi
 
       - run: cd ingest && python -m escx.cli compute
       - run: cd ingest && python -m escx.cli status

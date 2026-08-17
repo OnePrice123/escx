@@ -11,7 +11,7 @@
 """
 from __future__ import annotations
 import argparse, sys, uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from . import compute as comp, db, dyads as dy, match
 from .sources import ucdp, gdelt, worldbank
@@ -123,6 +123,62 @@ def cmd_pull_candidate(args):
     seen, total = _ingest_batches(con, ds, ucdp.iter_candidate(year, month),
                                   "ucdp_candidate")
     print(f"прочитано событий: {seen}, записано новых: {total}")
+
+
+def cmd_backfill_gdelt(args):
+    """История GDELT из суточных файлов 1.0.
+
+    Зачем отдельная команда, а не флаг у pull-gdelt: та ходит по срезам 2.0 и
+    двигается ТОЛЬКО вперёд по метке watermark, потому что для живого потока это
+    правильно. Бэкфилл идёт назад и по другим файлам — смешивать эти два обхода
+    в одной функции значит гарантированно однажды сдвинуть метку не туда и
+    потерять срезы навсегда.
+
+    Почему это вообще нужно. История GDELT нигде, кроме базы, не хранится: файл
+    базы лежит в кэше GitHub Actions и в репозиторий не коммитится. Потеря кэша
+    до появления этой команды означала безвозвратную потерю всех данных за
+    период, который UCDP ещё не покрыл, — то есть всего текущего года.
+    """
+    con = db.connect(args.db)
+    ds = dy.load()
+    start = date.fromisoformat(args.start)
+    end = date.fromisoformat(args.end)
+    if start > end:
+        print("начало позже конца"); return 1
+
+    days = [start + timedelta(days=i) for i in range((end - start).days + 1)]
+    print(f"бэкфилл GDELT: {len(days)} суток, {start} .. {end}")
+    total = skipped = missing = 0
+
+    for d in days:
+        iso = d.isoformat()
+        # Знаменатель нормировки в series накопительный: повторный проход по
+        # тем же суткам удвоил бы его и тихо занизил инфополе вдвое. Поэтому
+        # день, уже посчитанный, пропускается целиком — события идемпотентны
+        # по ключу (source, source_id), а вот объём упоминаний нет.
+        if db.get_watermark(con, f"gdelt_daily:{iso}"):
+            skipped += 1
+            continue
+
+        blob = gdelt.get(gdelt.daily_url_v1(iso), use_cache=True)
+        if not blob:
+            print(f"  {iso}: файла нет, пропуск")
+            missing += 1
+            continue
+
+        norm = gdelt.normalize(gdelt.parse_daily_v1(blob))
+        norm, _ = match.attribute_all(norm, ds)
+        keep = [e for e in norm if e["dyad_id"]]
+        n = db.upsert_events(con, keep)
+        total += n
+        db.add_series(con, "gdelt", "global_mentions", iso,
+                      sum(e.get("num_mentions") or 1 for e in norm))
+        db.set_watermark(con, f"gdelt_daily:{iso}", "done")
+        print(f"  {iso}: пар государств {len(norm)}, диад {len(keep)}, новых {n}")
+
+    print(f"записано новых событий: {total}"
+          + (f", пропущено уже загруженных суток: {skipped}" if skipped else "")
+          + (f", файлов не нашлось: {missing}" if missing else ""))
 
 
 def cmd_pull_gdelt(args):
@@ -266,6 +322,12 @@ def main(argv=None):
     g = sub.add_parser("pull-gdelt")
     g.add_argument("--slices", type=int, default=4)
     g.set_defaults(fn=cmd_pull_gdelt)
+
+    bg = sub.add_parser("backfill-gdelt",
+                        help="история из суточных файлов GDELT 1.0")
+    bg.add_argument("--start", required=True, help="YYYY-MM-DD")
+    bg.add_argument("--end", required=True, help="YYYY-MM-DD")
+    bg.set_defaults(fn=cmd_backfill_gdelt)
 
     e = sub.add_parser("llm-eval")
     e.add_argument("--gold", required=True, help="JSON с ручной разметкой")
