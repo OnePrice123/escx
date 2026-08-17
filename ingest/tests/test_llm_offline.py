@@ -181,5 +181,79 @@ check("в наборе видов признаков нет прогнозных
       not any("forecast" in k or "prob" in k for k in S.INDICATOR_KINDS))
 check("порог допуска задан явно", ADMISSION["weighted_kappa_min"] >= 0.6)
 
+print("\n10. Провайдер Gemini (сеть подменена)")
+from escx.llm import GeminiProvider, PRICES, make_provider
+from escx.llm import provider as P
+
+sent = {}
+class _Resp:
+    def __init__(self, body): self.body = json.dumps(body).encode()
+    def read(self): return self.body
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+def fake_urlopen(reply):
+    def _f(req, timeout=None, context=None):
+        sent["url"] = req.full_url
+        sent["headers"] = {k.lower(): v for k, v in req.headers.items()}
+        sent["body"] = json.loads(req.data)
+        return _Resp(reply)
+    return _f
+
+REPLY = {"candidates": [{"content": {"parts": [{"text": json.dumps(GOOD)}]}}],
+         "usageMetadata": {"promptTokenCount": 1200, "candidatesTokenCount": 90,
+                           "thoughtsTokenCount": 40}}
+
+real_urlopen = P.urllib.request.urlopen
+P.urllib.request.urlopen = fake_urlopen(REPLY)
+try:
+    g = GeminiProvider("gemini-2.5-flash", api_key="k-test")
+    text, ti, to = g.complete("СИСТЕМА", "ТЕКСТ СООБЩЕНИЯ: " + TEXT)
+
+    check("ключ уходит заголовком, а не в адресе",
+          sent["headers"].get("x-goog-api-key") == "k-test" and "k-test" not in sent["url"])
+    check("температура 0 — иначе кэш и воспроизводимость мертвы",
+          sent["body"]["generationConfig"]["temperature"] == 0.0)
+    check("ответ затребован строго как JSON",
+          sent["body"]["generationConfig"]["responseMimeType"] == "application/json")
+    check("размышления выключены по умолчанию",
+          sent["body"]["generationConfig"]["thinkingConfig"]["thinkingBudget"] == 0)
+    check("системная инструкция вынесена из contents",
+          sent["body"]["systemInstruction"]["parts"][0]["text"] == "СИСТЕМА"
+          and "СИСТЕМА" not in json.dumps(sent["body"]["contents"], ensure_ascii=False))
+    check("ответ разбирается в валидную разметку", validate(json.loads(text), TEXT).escalation_level == 4)
+    check("размышления учтены в расходе (90+40, а не 90)", (ti, to) == (1200, 130), (ti, to))
+
+    # Фильтр безопасности: сообщения про обстрелы и погибших блокируются регулярно.
+    P.urllib.request.urlopen = fake_urlopen({"promptFeedback": {"blockReason": "SAFETY"}})
+    try:
+        GeminiProvider("gemini-2.5-flash", api_key="k").complete("s", "u")
+        check("пустой ответ не выдаётся за «событий нет»", False)
+    except RuntimeError as e:
+        check("пустой ответ не выдаётся за «событий нет»", "SAFETY" in str(e))
+finally:
+    P.urllib.request.urlopen = real_urlopen
+
+os.environ.pop("GEMINI_API_KEY", None)
+try:
+    GeminiProvider("gemini-2.5-flash").complete("s", "u")
+    check("без ключа падаем до сети, а не в сети", False)
+except RuntimeError as e:
+    check("без ключа падаем до сети, а не в сети", "GEMINI_API_KEY" in str(e))
+
+os.environ.pop("ESCX_LLM_PROVIDER", None)
+check("по умолчанию провайдер mock, а не платный", make_provider().name == "mock")
+check("gemini выбирается явно", make_provider("gemini").name == "gemini-2.5-flash")
+try:
+    make_provider("qwen")
+    check("неизвестный провайдер — ошибка, а не тихий mock", False)
+except ValueError:
+    check("неизвестный провайдер — ошибка, а не тихий mock", True)
+
+bud = Budget(sqlite3.connect(":memory:"), daily_usd=3.0, prices=PRICES)
+check("цена gemini известна бюджету", bud.cost("gemini-2.5-flash", 1_000_000, 0) > 0)
+check("бюджет режет прогон до запроса, а не после",
+      bud.cost("gemini-2.5-flash", 20_000_000, 1_000_000) > 3.0)
+
 print(f"\n{'='*46}\nпройдено {ok}, провалено {fail}\n{'='*46}")
 sys.exit(1 if fail else 0)

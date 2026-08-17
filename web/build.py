@@ -267,6 +267,16 @@ def build(demo_mode: bool = False) -> dict:
     for f in ("tokens.css", "escx-ui.js"):
         shutil.copy2(ROOT / "design" / f, SITE / "design" / f)
 
+    # Страница собрана из отдельных файлов, а не одним куском: словари шестнадцати
+    # языков и отрисовка не помещаются в шаблон, который ещё и читать надо.
+    # Копируется всё дерево, кроме демонстрационных чисел — их публиковать нельзя.
+    assets_src = ROOT / "assets"
+    if assets_src.exists():
+        shutil.copytree(assets_src, SITE / "assets",
+                        ignore=shutil.ignore_patterns("demo-data.js"))
+    else:
+        print("  нет assets/ — страница останется без стилей и отрисовки", file=sys.stderr)
+
     # Фирменные файлы кладём в корень, а не в подпапку: браузеры и мессенджеры
     # ходят за иконками по угаданным путям, и корень — единственный, который
     # угадывают все. Растровые иконки собираются brand/rasterize.py и лежат

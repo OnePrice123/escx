@@ -37,10 +37,27 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.11"}
 
-      - name: восстановить базу из артефакта ежедневного прогона
-        uses: actions/download-artifact@v4
-        continue-on-error: true          # базы может ещё не быть — соберётся демо
-        with: {name: escx-db, path: ingest}
+      # База лежит в кэше, а не в артефакте. Раньше здесь стоял
+      # download-artifact@v4 — он видит только артефакты СВОЕГО прогона и потому
+      # молча, без ошибки, не находил ничего. Сборка каждый раз выходила без
+      # базы и публиковала пустой реестр поверх посчитанной витрины.
+      # Ключ тот же, что в daily.yml и hourly.yml.
+      - name: восстановить базу из кэша ежедневного прогона
+        uses: actions/cache/restore@v4
+        with:
+          path: ingest/escx.db
+          key: escx-db-
+          restore-keys: escx-db-
+
+      # Без базы публиковать нельзя: build.py соберёт пустой реестр и затрёт им
+      # витрину. Уронить прогон дешевле, чем показать «данные ещё не собраны»
+      # на работающем индексе.
+      - name: убедиться, что база на месте
+        run: |
+          if [ ! -s ingest/escx.db ]; then
+            echo "::error::базы нет в кэше — публикация отменена, иначе выкатим пустой реестр"
+            exit 1
+          fi
 
       - name: собрать сайт
         run: python3 web/build.py

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru" data-tint="sand">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>brink.watch — предпросмотр объединённого варианта</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="design/tokens.css">
+<style>
+  header{position:sticky;top:0;z-index:40;
+    background:color-mix(in srgb,var(--paper) 82%,transparent);
+    backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px)}
+  .hbar{display:flex;align-items:center;gap:16px;height:64px;flex-wrap:wrap}
+  .mark{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:300;
+    letter-spacing:-.02em;color:var(--ink);text-decoration:none}
+  .mark .wdot{color:var(--t3)}
+  .sp{flex:1}
+  main{padding-bottom:96px}
+
+  /* ── шкала ─────────────────────────────────────────────────────────
+     Дуга — из escx. Добавлен подписанный спектр: полосы «грани» вдоль
+     дуги и деления между ними. Прототип подписывал только концы, и по
+     нему нельзя было прочитать, что значит конкретное положение. */
+  .gwrap{display:grid;grid-template-columns:minmax(300px,460px) 1fr;gap:44px;align-items:center}
+  .gnum{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;pointer-events:none;padding-top:26px}
+  .display{font-size:clamp(46px,7vw,72px);font-weight:200;letter-spacing:-.04em;line-height:1}
+  .gstate{font-size:15px;color:var(--ink-2);margin-top:10px;letter-spacing:.01em}
+  .gsub{font-size:12.5px;color:var(--ink-4);margin-top:5px}
+  .gdelta{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+
+  /* Легенда спектра под дугой: пять полос одной строкой. Активная —
+     та, в которой сейчас стоит уголёк. */
+  .bands{display:flex;gap:0;margin-top:6px;border-top:1px solid var(--hair);padding-top:10px}
+  .band{flex:1;text-align:center;font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--ink-4);position:relative;padding-top:9px}
+  .band::before{content:"";position:absolute;top:-11px;left:50%;width:1px;height:7px;
+    background:var(--hair)}
+  .band[data-on="1"]{color:var(--ink);font-weight:600}
+  .band[data-on="1"]::before{background:var(--t3);height:11px;top:-13px}
+
+  .axes{margin-top:26px;display:grid;gap:18px}
+  .ax__top{display:flex;justify-content:space-between;align-items:baseline;
+    font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-4)}
+  .ax__bar{height:3px;border-radius:2px;background:color-mix(in srgb,var(--ink) 7%,transparent);
+    margin:8px 0 6px;overflow:hidden}
+  .ax__fill{height:100%;border-radius:2px}
+  .ax__val{font-size:26px;font-weight:200;letter-spacing:-.03em}
+  .ax__note{font-size:12px;color:var(--ink-3)}
+
+  /* ── лента ─────────────────────────────────────────────────────── */
+  .row{display:grid;grid-template-columns:1fr 132px 92px 150px;gap:14px;align-items:center;
+    padding:15px 16px;border-radius:12px;background:var(--heat,transparent);
+    transition:background .2s}
+  .row+.row{margin-top:3px}
+  .row:hover{background:color-mix(in srgb,var(--ink) 4%,var(--heat,transparent))}
+  .row__name{font-size:15px;color:var(--ink)}
+  .row__meta{font-size:11px;color:var(--ink-4);margin-top:3px}
+  .row__num{font-size:24px;font-weight:200;letter-spacing:-.03em;text-align:right}
+  .row__band{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);
+    text-align:right}
+  .row__d{font-size:12.5px;color:var(--ink-3);text-align:right}
+  /* Приглушение — признак низкого покрытия, а не способ спрятать строку.
+     На .5 текст переставал читаться, а сейчас под порогом ВСЕ диады: лента
+     выглядела сломанной. Приглушаем мягче, а причину пишем словами. */
+  .row[data-stale="1"]{opacity:.72}
+  .warn{font-size:12.5px;color:var(--ink-2);line-height:1.7;max-width:78ch;
+    border-left:2px solid var(--t3);padding-left:12px;margin-bottom:16px}
+  .cov{font-size:9.5px;letter-spacing:.06em;color:var(--ink-4);
+    border:1px solid var(--hair);border-radius:20px;padding:1px 7px;margin-left:8px}
+
+  .note{font-size:12px;color:var(--ink-4);line-height:1.7;max-width:78ch}
+  .empty .big{font-size:clamp(30px,5vw,44px);font-weight:200;letter-spacing:-.035em;
+    line-height:1.15;max-width:20ch}
+
+  @media(max-width:900px){
+    .gwrap{grid-template-columns:1fr}
+    .row{grid-template-columns:1fr 84px 108px}
+    .row__band{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header><div class="shell hbar">
+  <a class="mark" href="/" aria-label="brink.watch — на главную">
+    <svg viewBox="0 0 100 100" width="24" height="24" fill="none" aria-hidden="true"><defs>
+      <linearGradient id="hg" gradientUnits="userSpaceOnUse" x1="34.5" y1="0" x2="75.4" y2="0">
+        <stop offset="0" stop-color="#7E8B92" stop-opacity=".28"/>
+        <stop offset=".55" stop-color="#C4703B" stop-opacity=".72"/>
+        <stop offset="1" stop-color="#C4703B"/></linearGradient>
+      <radialGradient id="hh"><stop offset="0" stop-color="#C4703B" stop-opacity=".45"/>
+        <stop offset="1" stop-color="#C4703B" stop-opacity="0"/></radialGradient></defs>
+      <path d="M 34.50 76.85 A 31 31 0 1 1 75.39 32.22" fill="none" stroke="url(#hg)"
+        stroke-width="10" stroke-linecap="round"/>
+      <circle cx="75.4" cy="32.2" r="17.5" fill="url(#hh)"/>
+      <circle cx="75.4" cy="32.2" r="5" fill="#C4703B"/></svg>
+    <span>brink<span class="wdot">·</span>watch</span></a>
+  <span class="sp"></span>
+  <button class="pill is-on" data-tint="sand">Песок</button>
+  <button class="pill" data-tint="ash">Пепел</button>
+  <button class="pill" data-tint="clay">Глина</button>
+  <button class="pill" id="nc">Без цвета</button>
+</div></header>
+
+<main class="shell">
+
+  <section class="sec" style="margin-top:44px;position:relative" id="heroSec">
+    <div class="glow" style="width:600px;height:600px;right:-160px;top:-200px;
+      background:radial-gradient(circle,color-mix(in srgb,var(--t3) 17%,transparent),transparent 68%)"></div>
+    <div class="micro" id="heroLabel">Глобальный индекс · мир сегодня</div>
+
+    <div class="gwrap" style="margin-top:22px">
+      <div>
+        <div style="position:relative" id="gauge">
+          <div class="gnum">
+            <div class="display num" id="gei">—</div>
+            <div class="gstate" id="geiState"></div>
+            <div class="gsub" id="geiSub"></div>
+            <div class="gdelta num" id="geiDelta"></div>
+          </div>
+        </div>
+        <div class="bands" id="bands"></div>
+      </div>
+
+      <div>
+        <p class="lede" style="font-size:15px;max-width:46ch" id="heroLede"></p>
+        <div class="axes" id="axes"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <hr class="fade" style="margin-bottom:34px">
+    <div class="micro">Лента · сортировка по близости к грани</div>
+    <p class="warn" id="feedWarn" style="margin-top:16px" hidden></p>
+    <div id="rows" style="margin-top:18px"></div>
+    <p class="note" style="margin-top:18px" id="legend"></p>
+  </section>
+
+  <footer>
+    <hr class="fade" style="margin-bottom:20px">
+    <span id="stamp"></span><br>
+    Источники: UCDP/PRIO · GDELT · Caldara &amp; Iacoviello GPR (CC BY) · SIPRI ·
+    VIEWS (Uppsala/PRIO). ACLED не используется.
+  </footer>
+</main>
+
+<script src="design/escx-ui.js"></script>
+<script>
+const { lightArc, sparkWash, heatWash, heatColor, setTint, toggleNoColor } = ESCX;
+
+/* ══ ШКАЛА ГРАНИ ══════════════════════════════════════════════════════
+   Три величины витрины ложатся на одну дугу, не смешиваясь:
+
+     ФАЗА  — какая полоса. Абсолютная лестница UCDP, единственное поле,
+             по которому конфликты сравнимы между собой.
+     НАКАЛ — где внутри полосы. Величина ОТНОСИТЕЛЬНАЯ: 50 — норма для
+             этой пары, а не полпути к войне. Поэтому она и не может
+             задавать полосу, только смещение внутри неё.
+     ТЕМП  — куда движется уголёк, подписывается словом.
+
+   Смешать накал и фазу в одно число нельзя: у замороженного конфликта
+   и у спокойной пары накал одинаков, а фаза различается на три ступени.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const BANDS = [
+  { to: 20,  name: 'вдали' },
+  { to: 40,  name: 'подступает' },
+  { to: 60,  name: 'у грани' },
+  { to: 80,  name: 'на грани' },
+  { to: 100, name: 'за гранью' },
+];
+
+/* Центр полосы для каждой фазы. Три военные фазы делят последнюю полосу:
+   война и расширенная война — обе «за гранью», но не в одной точке. */
+const PHASE_POS = [10, 30, 50, 70, 84, 92, 98];
+
+function brinkPos(d) {
+  const ph = Math.max(0, Math.min(6, Number(d.phase) || 0));
+  const centre = PHASE_POS[ph];
+  // Накал смещает внутри полосы на ±7 пунктов: 50 — норма, значит смещение 0.
+  const heat = Number.isFinite(d.h_abs) ? d.h_abs : 50;
+  const shift = ((heat - 50) / 50) * 7;
+  return Math.max(0, Math.min(100, centre + shift));
+}
+
+const bandOf = v => BANDS.find(b => v < b.to) || BANDS[BANDS.length - 1];
+const sgn = n => (n > 0 ? '+' : '') + n;
+
+let DATA = null;
+
+function renderBands(active) {
+  document.querySelector('#bands').innerHTML = BANDS.map(b =>
+    `<span class="band" data-on="${b.name === active ? 1 : 0}">${b.name}</span>`).join('');
+}
+
+function renderGlobal() {
+  const g = DATA.global || {};
+  // Глобальный индекс — взвешенное среднее накала, у него нет фазы.
+  // Ставим его на дугу как есть и подписываем полосой, в которую попал.
+  const v = Number(g.gei) || 0;
+  const band = bandOf(v);
+
+  document.querySelector('#gauge').insertAdjacentHTML('afterbegin',
+    // Без подписей на концах: легенда полос идёт прямо под дугой и называет
+    // весь спектр, а не только края. С подписями «ВДАЛИ» стояло дважды одно
+    // под другим — шкала выглядела так, будто у неё две разные разметки.
+    lightArc(v, { id: 'global', labels: null }));
+
+  document.querySelector('#gei').textContent = Math.round(v);
+  document.querySelector('#geiState').textContent = band.name;
+  document.querySelector('#geiSub').textContent = 'по всем ' + (DATA.dyads || []).length + ' диадам';
+  const d30 = g.delta_30;
+  document.querySelector('#geiDelta').textContent =
+    Number.isFinite(d30) ? sgn(d30) + ' за 30 дней' : '';
+  renderBands(band.name);
+
+  document.querySelector('#heroLede').textContent =
+    'Взвешенное по последствиям среднее накала по всем диадам реестра. ' +
+    'Не среднее арифметическое: тридцать спокойных диад не должны гасить ' +
+    'одну диаду ядерных держав в кризисе.';
+
+  document.querySelector('#axes').innerHTML = (g.axes || []).map(a => `
+    <div>
+      <div class="ax__top"><span>${a.name}</span></div>
+      <div class="ax__bar"><i class="ax__fill" style="width:${a.value}%;background:${heatColor(a.value)}"></i></div>
+      <div class="ax__val num" style="color:${heatColor(a.value)}">${a.value}</div>
+      <div class="ax__note">${a.note || ''}</div>
+    </div>`).join('');
+}
+
+function renderRows() {
+  const list = (DATA.dyads || []).slice()
+    .map(d => ({ d, pos: brinkPos(d) }))
+    .sort((a, b) => b.pos - a.pos);          // ближе к грани — выше
+
+  document.querySelector('#rows').innerHTML = list.map(({ d, pos }) => {
+    const band = bandOf(pos);
+    const stale = (d.data_coverage ?? 100) < 40;
+    const heat = Number.isFinite(d.h_abs) ? d.h_abs : 50;
+    const d30 = Number.isFinite(d.delta_30) ? d.delta_30 : 0;
+    return `
+      <div class="row" data-stale="${stale ? 1 : 0}" style="--heat:${heatWash(pos, { stale })}">
+        <div>
+          <div class="row__name">${d.name}${stale ? `<span class="cov">покрытие ${d.data_coverage}%</span>` : ''}</div>
+          <div class="row__meta">${d.phase_name} · ${d.region || ''}</div>
+        </div>
+        <div>${sparkWash(d.series_90d || [], { id: d.dyad_id, color: heatColor(pos) })}</div>
+        <div class="row__num" style="color:${heatColor(pos)}">${Math.round(heat)}</div>
+        <div>
+          <div class="row__band">${band.name}</div>
+          <div class="row__d">${sgn(d30)} · ${d.tempo_name}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Когда под порогом ВСЯ лента, приглушение перестаёт что-либо различать:
+  // оно должно выделять исключение, а не красить всё подряд. Тогда причина
+  // выносится наверх одной фразой.
+  const stale = list.filter(({ d }) => (d.data_coverage ?? 100) < 40).length;
+  const warn = document.querySelector('#feedWarn');
+  if (stale === list.length && list.length) {
+    warn.hidden = false;
+    warn.textContent = 'Покрытие данных ниже 40 % по всем диадам: пайплайн ещё '
+      + 'набирает историю. Фазы взяты из UCDP и надёжны, накал внутри полосы '
+      + 'пока опирается на короткий ряд и будет уточняться.';
+  } else {
+    warn.hidden = true;
+  }
+
+  document.querySelector('#legend').innerHTML =
+    `${list.length} диад · полосу задаёт фаза, число — накал: 50 это норма для ` +
+    `этой пары, а не полпути к войне` +
+    (stale && stale < list.length ? ` · приглушены строки с покрытием ниже 40 %` : '');
+}
+
+function renderEmpty() {
+  document.querySelector('#heroSec').innerHTML = `
+    <div class="empty">
+      <div class="micro">Индекс ещё не рассчитан</div>
+      <div class="big" style="margin-top:14px">Пайплайн собирает данные.</div>
+      <p class="note" style="margin-top:16px">Первые значения появятся после полного прогона.
+      Показывать правдоподобное число, за которым ничего не стоит, — ровно то,
+      против чего построен этот проект.</p>
+    </div>`;
+  document.querySelector('#rows').innerHTML = '';
+}
+
+fetch('data/index.json', { cache: 'no-store' })
+  .then(r => r.json())
+  .then(d => {
+    DATA = d;
+    document.querySelector('#stamp').textContent =
+      'Пересчитано ' + (d.built_at || '—') + ' · методология ' + (d.method_version || '—');
+    if (d.source !== 'db') return renderEmpty();
+    renderGlobal();
+    renderRows();
+  })
+  .catch(e => { console.error(e); renderEmpty(); });
+
+document.querySelectorAll('[data-tint]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-tint]').forEach(x => x.classList.remove('is-on'));
+  b.classList.add('is-on');
+  setTint(b.dataset.tint);
+}));
+document.querySelector('#nc').addEventListener('click', toggleNoColor);
+</script>
+</body>
+</html>
