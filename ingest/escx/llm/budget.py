@@ -48,6 +48,19 @@ class Budget:
         return max(0.0, self.daily - self.spent_today())
 
     def cost(self, model: str, tok_in: int, tok_out: int) -> float:
+        # Молчаливый ноль за неизвестную модель — худший из возможных исходов:
+        # лимит перестаёт срабатывать ровно тогда, когда в конфигурации опечатка
+        # или подставлена новая модель, и счёт растёт без потолка. Поймано на
+        # живом прогоне: gemini-flash-latest не было в прайсе, и три запроса
+        # «стоили» $0.00000.
+        #
+        # Пустой прайс — отдельный случай: так Budget вызывают из тестов, где
+        # деньги не считаются вовсе. Там ноль осмыслен, и ронять нечего.
+        if self.prices and model not in self.prices:
+            raise ValueError(
+                f"нет цены для модели {model!r}: дневной лимит на ней не работает. "
+                f"Добавьте её в PRICES (escx/llm/provider.py). "
+                f"Известны: {', '.join(sorted(self.prices))}")
         pin, pout = self.prices.get(model, (0.0, 0.0))
         return tok_in / 1e6 * pin + tok_out / 1e6 * pout
 

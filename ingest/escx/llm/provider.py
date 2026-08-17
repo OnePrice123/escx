@@ -119,16 +119,21 @@ class GeminiProvider:
     """
     BASE = "https://generativelanguage.googleapis.com/v1beta"
 
-    def __init__(self, model: str = "gemini-2.5-flash", api_key: str | None = None,
-                 temperature: float = 0.0, thinking_budget: int | None = 0,
+    def __init__(self, model: str = "gemini-flash-lite-latest", api_key: str | None = None,
+                 temperature: float = 0.0, thinking_budget: int | None = None,
                  base_url: str | None = None):
         self.name = model
         self.model = model
         self.base = (base_url or os.environ.get("ESCX_GEMINI_BASE", self.BASE)).rstrip("/")
         self.key = api_key or os.environ.get("GEMINI_API_KEY", "")
         self.temperature = temperature   # 0 обязателен: иначе кэш и воспроизводимость мертвы
-        # Извлечение по жёсткой схеме — не та задача, где размышления окупаются.
-        # Оплачиваются они как выходные токены, поэтому по умолчанию выключены.
+        # thinkingConfig по умолчанию НЕ отправляется. Проверено на живом API:
+        # lite-модели (gemini-3.5-flash-lite, gemini-flash-lite-latest) отвечают
+        # на этот параметр 400 INVALID_ARGUMENT, хотя размышлений и так не тратят.
+        # А gemini-flash-latest параметр принимает, но соблюдает лишь частично:
+        # на реальном промпте всё равно уходит под две сотни токенов размышлений.
+        # Отсюда правило: для извлечения по схеме берём lite-модель и молчим про
+        # thinking, а не пытаемся его выключить.
         self.thinking_budget = thinking_budget
 
     def complete(self, system: str, user: str) -> tuple[str, int, int]:
@@ -175,13 +180,29 @@ class GeminiProvider:
         return text, tok_in, tok_out
 
 
-# Цены за 1M токенов (вход, выход) для Budget. Сверяйтесь с ai.google.dev/pricing —
-# тарифы меняются, а молча разъехавшийся прайс превращает дневной лимит в фикцию.
+# Цены за 1M токенов (вход, выход) для Budget.
+#
+# ВНИМАНИЕ: значения ниже — оценка СВЕРХУ, а не выписка из прайс-листа. Занижать
+# здесь нельзя ни при каких обстоятельствах: лимит считается по этим числам, и
+# заниженная цена означает перерасход втрое молча. Завышенная — лишь то, что
+# прогон остановится раньше, чем мог бы. Из двух ошибок допустима вторая.
+#
+# Сверьте с ai.google.dev/pricing и поправьте — тарифы меняются, а модели
+# снимаются: gemini-2.5-* на этом ключе уже отвечают 404 «no longer available
+# to new users», Google отсылает к gemini-3.6-flash и gemini-3.5-flash-lite.
 PRICES: dict[str, tuple[float, float]] = {
-    "gemini-2.5-flash":      (0.30, 2.50),
-    "gemini-2.5-flash-lite": (0.10, 0.40),
-    "gemini-2.5-pro":        (1.25, 10.00),
-    "mock":                  (0.00, 0.00),
+    # lite-класс: то, что нужно для извлечения по жёсткой схеме
+    "gemini-3.5-flash-lite":    (0.10, 0.40),
+    "gemini-3.1-flash-lite":    (0.10, 0.40),
+    "gemini-flash-lite-latest": (0.10, 0.40),
+    # flash-класс
+    "gemini-3.5-flash":         (0.30, 2.50),
+    "gemini-3.6-flash":         (0.30, 2.50),
+    "gemini-3.7-flash":         (0.30, 2.50),
+    "gemini-flash-latest":      (0.30, 2.50),
+    # pro-класс: для скоринга не нужен, оставлен ради полноты
+    "gemini-pro-latest":        (1.25, 10.00),
+    "mock":                     (0.00, 0.00),
 }
 
 
@@ -195,7 +216,10 @@ def make_provider(name: str | None = None) -> Provider:
     if kind == "mock":
         return MockProvider()
     if kind == "gemini":
-        return GeminiProvider(os.environ.get("ESCX_LLM_MODEL", "gemini-2.5-flash"))
+        # По умолчанию lite: скоринг идёт по жёсткой схеме и большого разума
+        # не требует, зато объём большой и цена важнее. gemini-2.5-flash,
+        # стоявший здесь раньше, снят Google и отвечает 404.
+        return GeminiProvider(os.environ.get("ESCX_LLM_MODEL", "gemini-flash-lite-latest"))
     if kind in ("openai", "openai-compat", "local"):
         return OpenAICompatProvider(os.environ.get("ESCX_LLM_MODEL", "local"))
     raise ValueError(f"неизвестный провайдер: {kind!r} (mock | gemini | openai)")

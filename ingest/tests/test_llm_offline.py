@@ -98,7 +98,10 @@ check("остаток не уходит в минус", b.remaining() == 0.0)
 print("\n6. Прогон целиком: кэш, отбраковка, свёртка")
 tmp = tempfile.mktemp(suffix=".db")
 con2 = sqlite3.connect(tmp); con2.row_factory = sqlite3.Row
-bud = Budget(con2, daily_usd=5.0, prices={"mock": (0.15, 0.60)})
+# Подставные провайдеры тоже перечислены в прайсе: Budget теперь роняет прогон
+# на модели без цены, потому что молчаливый ноль отключает дневной лимит.
+bud = Budget(con2, daily_usd=5.0,
+             prices={"mock": (0.15, 0.60), "broken": (0.15, 0.60), "halluc": (0.15, 0.60)})
 arts = [
   {"article_id":"1","title":"Перестрелка на границе","body":TEXT},
   {"article_id":"2","title":"Учения","body":"Объявлены внеплановые учения в приграничном округе."},
@@ -207,7 +210,7 @@ REPLY = {"candidates": [{"content": {"parts": [{"text": json.dumps(GOOD)}]}}],
 real_urlopen = P.urllib.request.urlopen
 P.urllib.request.urlopen = fake_urlopen(REPLY)
 try:
-    g = GeminiProvider("gemini-2.5-flash", api_key="k-test")
+    g = GeminiProvider("gemini-flash-lite-latest", api_key="k-test")
     text, ti, to = g.complete("СИСТЕМА", "ТЕКСТ СООБЩЕНИЯ: " + TEXT)
 
     check("ключ уходит заголовком, а не в адресе",
@@ -216,18 +219,28 @@ try:
           sent["body"]["generationConfig"]["temperature"] == 0.0)
     check("ответ затребован строго как JSON",
           sent["body"]["generationConfig"]["responseMimeType"] == "application/json")
-    check("размышления выключены по умолчанию",
-          sent["body"]["generationConfig"]["thinkingConfig"]["thinkingBudget"] == 0)
+    # Проверено на живом API: lite-модели отвечают 400 INVALID_ARGUMENT на
+    # thinkingConfig, хотя размышлений и так не тратят. Поэтому по умолчанию
+    # параметр не отправляется вовсе, а не отправляется с нулём.
+    check("thinkingConfig по умолчанию не отправляется",
+          "thinkingConfig" not in sent["body"]["generationConfig"])
     check("системная инструкция вынесена из contents",
           sent["body"]["systemInstruction"]["parts"][0]["text"] == "СИСТЕМА"
           and "СИСТЕМА" not in json.dumps(sent["body"]["contents"], ensure_ascii=False))
     check("ответ разбирается в валидную разметку", validate(json.loads(text), TEXT).escalation_level == 4)
+
+    P.urllib.request.urlopen = fake_urlopen(REPLY)
+    GeminiProvider("gemini-flash-latest", api_key="k", thinking_budget=0).complete("s", "u")
+    check("явно заданный thinkingBudget всё же отправляется",
+          sent["body"]["generationConfig"]["thinkingConfig"]["thinkingBudget"] == 0)
+    P.urllib.request.urlopen = fake_urlopen(REPLY)
+    g.complete("СИСТЕМА", "ТЕКСТ СООБЩЕНИЯ: " + TEXT)
     check("размышления учтены в расходе (90+40, а не 90)", (ti, to) == (1200, 130), (ti, to))
 
     # Фильтр безопасности: сообщения про обстрелы и погибших блокируются регулярно.
     P.urllib.request.urlopen = fake_urlopen({"promptFeedback": {"blockReason": "SAFETY"}})
     try:
-        GeminiProvider("gemini-2.5-flash", api_key="k").complete("s", "u")
+        GeminiProvider("gemini-flash-lite-latest", api_key="k").complete("s", "u")
         check("пустой ответ не выдаётся за «событий нет»", False)
     except RuntimeError as e:
         check("пустой ответ не выдаётся за «событий нет»", "SAFETY" in str(e))
@@ -236,14 +249,14 @@ finally:
 
 os.environ.pop("GEMINI_API_KEY", None)
 try:
-    GeminiProvider("gemini-2.5-flash").complete("s", "u")
+    GeminiProvider("gemini-flash-lite-latest").complete("s", "u")
     check("без ключа падаем до сети, а не в сети", False)
 except RuntimeError as e:
     check("без ключа падаем до сети, а не в сети", "GEMINI_API_KEY" in str(e))
 
 os.environ.pop("ESCX_LLM_PROVIDER", None)
 check("по умолчанию провайдер mock, а не платный", make_provider().name == "mock")
-check("gemini выбирается явно", make_provider("gemini").name == "gemini-2.5-flash")
+check("gemini выбирается явно", make_provider("gemini").name == "gemini-flash-lite-latest")
 try:
     make_provider("qwen")
     check("неизвестный провайдер — ошибка, а не тихий mock", False)
@@ -251,9 +264,18 @@ except ValueError:
     check("неизвестный провайдер — ошибка, а не тихий mock", True)
 
 bud = Budget(sqlite3.connect(":memory:"), daily_usd=3.0, prices=PRICES)
-check("цена gemini известна бюджету", bud.cost("gemini-2.5-flash", 1_000_000, 0) > 0)
+check("цена gemini известна бюджету", bud.cost("gemini-flash-lite-latest", 1_000_000, 0) > 0)
 check("бюджет режет прогон до запроса, а не после",
-      bud.cost("gemini-2.5-flash", 20_000_000, 1_000_000) > 3.0)
+      bud.cost("gemini-flash-lite-latest", 60_000_000, 10_000_000) > 3.0)
+check("плавающий псевдоним тоже имеет цену",
+      bud.cost("gemini-flash-latest", 1_000_000, 0) > 0)
+try:
+    bud.cost("gemini-небывалая", 1_000_000, 1_000_000)
+    check("неизвестная модель НЕ стоит молча ноль", False)
+except ValueError as e:
+    check("неизвестная модель НЕ стоит молча ноль", "нет цены" in str(e))
+check("без прайса (тестовый режим) ноль допустим",
+      Budget(sqlite3.connect(":memory:"), daily_usd=1.0).cost("что угодно", 10**6, 10**6) == 0)
 
 print(f"\n{'='*46}\nпройдено {ok}, провалено {fail}\n{'='*46}")
 sys.exit(1 if fail else 0)
