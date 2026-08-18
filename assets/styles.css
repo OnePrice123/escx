@@ -1188,3 +1188,72 @@ body {
   .dial__value { font-size: 38px; }
   .movers { flex-direction: column; }
 }
+
+/* ── страница пары ────────────────────────────────────────────────
+   Раскрытие числа до исходного события. Структуру держат пауза и тон,
+   рамок нет — по тому же правилу, что и на витрине. */
+.dpage { max-width: 940px; padding-block: clamp(28px, 5vw, 64px); }
+.dpage__load, .dpage__err { padding-block: 40px; }
+.dpage__title { margin: 0 0 8px; font: 400 clamp(26px, 3.6vw, 38px)/1.15 var(--serif); }
+.dpage__note { margin: 14px 0 0; font-size: 12.5px; line-height: 1.65; color: var(--ink-3); }
+.dpage__foot { margin: 48px 0 0; padding-top: 20px; border-top: 1px solid var(--hair-soft);
+               display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.dpage__stamp { font-size: 12.5px; color: var(--ink-3); }
+
+.dhead__nums { margin: 26px 0 0; display: flex; gap: clamp(22px, 5vw, 54px); flex-wrap: wrap; }
+.dnum { display: flex; flex-direction: column; gap: 3px; }
+.dnum__v { font: 400 clamp(22px, 3vw, 30px)/1 var(--serif); color: var(--ink); }
+.dnum__k { font: 600 10px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase;
+           color: var(--ink-3); }
+
+.dsec { margin: clamp(36px, 6vw, 64px) 0 0; }
+.dsec .lede { margin-bottom: 18px; }
+
+/* Блок методологии. Неизмеренный гаснет тоном, а не прячется: то, чего мы
+   не знаем, — часть ответа, и убрать его со страницы значило бы соврать. */
+.blk { padding: 14px 0; border-top: 1px solid var(--hair-soft); }
+.blk__head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.blk__name { font-size: 15px; color: var(--ink); }
+.blk__w { font-size: 12.5px; color: var(--ink-3); }
+.blk__state { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+.blk--none .blk__name, .blk--none .blk__state { color: var(--ink-3); }
+.blk--none .blk__state { color: var(--t4); }
+.blk__inds { margin: 8px 0 0; display: grid; gap: 4px; }
+.ind { display: grid; grid-template-columns: minmax(0,1fr) auto 56px 90px; gap: 12px;
+       align-items: baseline; font-size: 13.5px; color: var(--ink-2); }
+.ind__src { font-size: 11.5px; color: var(--ink-3); }
+.ind__z { text-align: end; color: var(--ink); }
+.ind__raw { text-align: end; font-size: 12.5px; color: var(--ink-3); }
+.ind--none { color: var(--ink-3); }
+.ind--none .ind__z, .ind--none .ind__raw { color: var(--ink-3); }
+@media (max-width: 620px) {
+  .ind { grid-template-columns: minmax(0,1fr) 52px 78px; }
+  .ind__src { display: none; }
+}
+
+.hist { list-style: none; margin: 0; padding: 0; }
+.hist__it { display: grid; grid-template-columns: 150px minmax(0,1fr) auto; gap: 14px;
+            padding: 11px 0; border-top: 1px solid var(--hair-soft); align-items: baseline; }
+.hist__at { font-size: 13px; color: var(--ink-3); }
+.hist__move { font-size: 14.5px; color: var(--ink); }
+.hist__rule { font-size: 12px; color: var(--ink-3); }
+@media (max-width: 620px) { .hist__it { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Таблица событий шире экрана на телефоне — прокручивается сама, а не тянет
+   за собой страницу. */
+.evwrap { overflow-x: auto; }
+.ev { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.ev th { text-align: start; padding: 0 14px 8px 0; font: 600 10px/1 var(--sans);
+         letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+.ev td { padding: 9px 14px 9px 0; border-top: 1px solid var(--hair-soft);
+         color: var(--ink-2); vertical-align: baseline; }
+.ev td.num { white-space: nowrap; color: var(--ink-3); }
+.ev a { color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--hair);
+        text-underline-offset: 3px; }
+.ev a:hover { color: var(--ink); text-decoration-color: var(--ink-3); }
+
+/* Ссылка на раскрытие из вида конфликта. */
+.deep { margin: 18px 0 0; font-size: 13px; }
+.deep a { color: var(--ink-2); text-decoration: underline;
+          text-decoration-color: var(--hair); text-underline-offset: 3px; }
+.deep a:hover { color: var(--ink); text-decoration-color: var(--ink-3); }

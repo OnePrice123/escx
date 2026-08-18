@@ -206,6 +206,18 @@ function paintReadout() {
     n.innerHTML = `<i>${signed(d)}</i><small>${t(key)}</small>`;
   });
 
+  // Ссылка на раскрытие. Только у пары: театр — свёртка нескольких пар,
+  // своих индикаторов и своих событий у него нет, и раскрывать в нём нечего.
+  const deep = $('#deepLink');
+  if (deep) {
+    deep.hidden = !!roll;
+    // Идентификатор наверх регистром: внутри витрины он строчный, а файлы
+    // данных названы как в реестре — RUS-UKR. Локальный сервер на Windows
+    // разницу простит, Cloudflare Pages вернёт 404.
+    if (!roll) deep.innerHTML =
+      `<a href="dyad.html?id=${encodeURIComponent(String(c.id).toUpperCase())}">Из чего сложилось это число: индикаторы, история ступеней и исходные события →</a>`;
+  }
+
   // подстрочник: у диады — счётчик дней, у театра — какая диада задаёт число
   const sub = $('#conflictSub');
   const upd = new Intl.DateTimeFormat(I18N[LANG]._locale, {

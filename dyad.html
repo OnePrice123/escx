@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Пара — brink.watch</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="icon-32.png" sizes="32x32" type="image/png">
+<link rel="stylesheet" href="assets/styles.css?v=29">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar__in">
+    <a class="brand" href="/" aria-label="brink.watch — на главную">
+      <svg class="brand__glyph" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="bmg" gradientUnits="userSpaceOnUse" x1="34.5" y1="0" x2="75.4" y2="0">
+            <stop class="s-ash" offset="0" stop-opacity=".28"/>
+            <stop class="s-ember" offset=".55" stop-opacity=".72"/>
+            <stop class="s-ember" offset="1"/>
+          </linearGradient>
+          <radialGradient id="bmh">
+            <stop class="s-ember" offset="0" stop-opacity=".45"/>
+            <stop class="s-ember" offset="1" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <path d="M 34.50 76.85 A 31 31 0 1 1 75.39 32.22" fill="none" stroke="url(#bmg)" stroke-width="10" stroke-linecap="round"/>
+        <circle cx="75.4" cy="32.2" r="17.5" fill="url(#bmh)"/>
+        <circle class="c-ember" cx="75.4" cy="32.2" r="5"/>
+      </svg>
+      <span class="brand__name">brink<span class="brand__dot">·</span>watch</span>
+    </a>
+  </div>
+</header>
+
+<main id="main" class="wrap dpage">
+
+  <p class="dpage__load" id="loading">Загружаем пару…</p>
+
+  <section class="dpage__err" id="failed" hidden>
+    <h1 class="dpage__title">Пара не найдена</h1>
+    <p class="lede" id="failMsg">Такой пары нет в реестре или данные ещё не собраны.</p>
+    <p><a class="btn" href="/">К барометру</a></p>
+  </section>
+
+  <article id="body" hidden>
+
+    <!-- Шапка: кто, на какой ступени и насколько горячо. -->
+    <header class="dhead">
+      <p class="eyebrow" id="dRegion"></p>
+      <h1 class="dpage__title" id="dName"></h1>
+      <p class="lede" id="dDisputed"></p>
+
+      <div class="dhead__nums">
+        <div class="dnum"><span class="dnum__v num" id="dHeat">—</span><span class="dnum__k">накал</span></div>
+        <div class="dnum"><span class="dnum__v" id="dPhase">—</span><span class="dnum__k">ступень</span></div>
+        <div class="dnum"><span class="dnum__v" id="dTempo">—</span><span class="dnum__k">темп</span></div>
+        <div class="dnum"><span class="dnum__v num" id="dCov">—</span><span class="dnum__k">покрытие данными</span></div>
+      </div>
+
+      <p class="dpage__note" id="dBasis"></p>
+    </header>
+
+    <!-- Главное на этой странице: из чего сложился накал и чего не измерено. -->
+    <section class="dsec">
+      <h2 class="h2">Из чего сложился накал</h2>
+      <p class="lede" id="blocksLede"></p>
+      <div id="blocks"></div>
+      <p class="dpage__note">Веса блоков в сумме дают единицу только когда измерены все пять. Неизмеренный блок не заменяется нулём и не перенормируется: ноль означал бы «проверили, там пусто», а правда в том, что этим источником пара не меряется совсем.</p>
+    </section>
+
+    <!-- История фаз: что система утверждала и на каком основании. -->
+    <section class="dsec" id="histSec">
+      <h2 class="h2">История ступеней</h2>
+      <p class="lede">Каждая запись — то, что система утверждала в тот день, с правилом, по которому это решено. Записи только добавляются: исправление ошибки — новая строка, а не правка старой.</p>
+      <ol class="hist" id="hist"></ol>
+    </section>
+
+    <!-- Раскрытие до исходного события. -->
+    <section class="dsec" id="evSec">
+      <h2 class="h2">Исходные события</h2>
+      <p class="lede" id="evLede"></p>
+      <div class="evwrap"><table class="ev" id="ev"></table></div>
+      <p class="dpage__note">Это сырые записи источников без нашей обработки — ровно то, из чего считаются индикаторы. Коды CAMEO проставлены автоматикой GDELT и, по нашей же проверке, ошибаются примерно в трети случаев; ссылка ведёт на статью, чтобы это можно было увидеть самому.</p>
+    </section>
+
+    <div class="dpage__foot">
+      <a class="btn" href="/">К барометру</a>
+      <span class="dpage__stamp" id="stamp"></span>
+    </div>
+
+  </article>
+</main>
+
+<script src="assets/arc.js?v=29"></script>
+<script src="assets/dyad.js?v=29"></script>
+</body>
+</html>

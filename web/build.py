@@ -39,6 +39,27 @@ PHASES = ["Нормализация", "Напряжённость", "Кризи�
 TEMPO  = {"spike": "Резкая эскалация", "up": "Нагрев", "flat": "Стабильно",
           "down": "Разрядка", "frozen": "Заморозка"}
 
+# Человеческие имена блоков и индикаторов. Живут здесь, а не в пайплайне:
+# это подписи витрины, и переписать их можно, не трогая расчёт.
+BLOCK_RU = {"kinetic": "Кинетика", "military": "Военный", "diplomatic": "Дипломатия",
+            "economic": "Экономика", "informational": "Инфополе"}
+IND_RU = {
+    "kin_events": "боевые эпизоды", "kin_fatalities": "боевые смерти",
+    "kin_geo": "география боёв", "inf_pressure": "тон сообщений",
+    "inf_share": "доля в новостном потоке", "inf_violence": "доля силовых событий",
+    "eco_sanctions": "санкционные меры", "dip_distance": "расстояние позиций в ООН",
+    "mil_air": "военная авиация в зоне",
+}
+# Откуда взялось число. Показывается рядом с индикатором: без этого «доля
+# силовых событий 0.83» выглядит измерением, а не пересказом кодировки GDELT.
+IND_SOURCE = {
+    "kin_events": "UCDP GED", "kin_fatalities": "UCDP GED", "kin_geo": "UCDP GED",
+    "inf_pressure": "GDELT", "inf_share": "GDELT", "inf_violence": "GDELT",
+    "eco_sanctions": "OFAC SDN", "dip_distance": "голосования ГА ООН (Voeten)",
+    "mil_air": "ADS-B (adsb.lol)",
+}
+EVENTS_SHOWN = 40      # больше на странице не читают, а вес файла растёт
+
 
 # --------------------------------------------------------------------------
 # Данные
@@ -60,6 +81,86 @@ def _bucket(values: list[int], size: int) -> list[int]:
     for i in range(start, n, size):
         chunk = values[i:i + size]
         out.append(round(sum(chunk) / len(chunk)))
+    return out
+
+
+def dyad_detail(con, dyad_id: str, day: str) -> dict:
+    """Раскрытие пары до исходных фактов: фазы, индикаторы, события.
+
+    Ради этого проект и затевался: «каждое число раскрывается до исходного
+    события». До сих пор витрина показывала итог и не показывала, из чего он
+    сложился, — то есть просила верить на слово ровно так же, как источники,
+    которым мы верить не предлагаем.
+
+    Ни один запрос здесь не имеет права уронить сборку: пустая деталь — это
+    страница без раздела, а упавшая сборка — это сайт без данных.
+    """
+    sys.path.insert(0, str(ROOT / "ingest"))
+    from escx.compute import INDICATORS
+    from escx.indicators import BLOCK_WEIGHTS
+
+    out: dict = {}
+
+    # История фаз. Берётся из phase_log, куда пишется только INSERT: каждая
+    # запись — это то, что система утверждала в тот день, а не то, что она
+    # думает об этом сейчас.
+    try:
+        out["phase_history"] = [
+            {"at": str(r["changed_at"])[:10], "from": r["phase_from"], "to": r["phase_to"],
+             "from_name": PHASES[r["phase_from"]] if isinstance(r["phase_from"], int)
+                          and 0 <= r["phase_from"] < len(PHASES) else None,
+             "to_name": PHASES[r["phase_to"]] if isinstance(r["phase_to"], int)
+                        and 0 <= r["phase_to"] < len(PHASES) else None,
+             "rule": r["rule"]}
+            for r in con.execute(
+                "SELECT changed_at, phase_from, phase_to, rule FROM phase_log "
+                "WHERE dyad_id=? ORDER BY changed_at DESC LIMIT 40", (dyad_id,))]
+    except sqlite3.Error:
+        out["phase_history"] = []
+
+    # Разбор накала. Блок без единого свежего индикатора помечается
+    # неизмеренным, а не нулевым: ноль означал бы «проверили, там пусто».
+    try:
+        have = {r["indicator_key"]: r for r in con.execute(
+            "SELECT indicator_key, raw_value, z_score, fresh FROM indicator_daily "
+            "WHERE dyad_id=? AND day=?", (dyad_id, day))}
+        blocks: dict[str, dict] = {}
+        for key, block in INDICATORS.items():
+            b = blocks.setdefault(block, {
+                "block": block, "name": BLOCK_RU.get(block, block),
+                "weight": BLOCK_WEIGHTS.get(block), "indicators": [], "measured": False})
+            r = have.get(key)
+            fresh = bool(r["fresh"]) if r is not None else False
+            b["indicators"].append({
+                "key": key, "name": IND_RU.get(key, key), "source": IND_SOURCE.get(key),
+                "raw": None if r is None or r["raw_value"] is None else round(r["raw_value"], 3),
+                "z": None if r is None or r["z_score"] is None else round(r["z_score"], 2),
+                "fresh": fresh})
+            b["measured"] = b["measured"] or fresh
+        out["blocks"] = sorted(blocks.values(), key=lambda b: -(b["weight"] or 0))
+    except sqlite3.Error:
+        out["blocks"] = []
+
+    # Исходные события. Ссылка на статью — то самое место, где читатель может
+    # проверить нас, а не поверить.
+    try:
+        evs = []
+        for r in con.execute(
+                "SELECT occurred_at, source, event_type, cameo_code, fatalities, payload "
+                "FROM raw_events WHERE dyad_id=? ORDER BY occurred_at DESC LIMIT ?",
+                (dyad_id, EVENTS_SHOWN)):
+            url = None
+            try:
+                url = (json.loads(r["payload"] or "{}") or {}).get("url")
+            except (ValueError, TypeError):
+                pass
+            evs.append({"day": str(r["occurred_at"])[:10], "source": r["source"],
+                        "type": r["event_type"], "cameo": r["cameo_code"],
+                        "fatalities": r["fatalities"], "url": url})
+        out["events"] = evs
+    except sqlite3.Error:
+        out["events"] = []
+
     return out
 
 
@@ -119,6 +220,12 @@ def from_db(path: Path) -> dict | None:
             kind, iso = k[6:].split(":", 1)
             if kind in shares:
                 shares[kind][iso] = r["value"]
+
+        # Раскрытие пары. Собирается здесь, пока соединение открыто, но в
+        # index.json НЕ кладётся: сорок событий и разбор по индикаторам на
+        # двадцать пар утяжелили бы главную страницу впятеро ради данных,
+        # которые нужны только тому, кто открыл конкретную пару.
+        details = {r["dyad_id"]: dyad_detail(con, r["dyad_id"], r["day"]) for r in rows}
     except sqlite3.OperationalError:
         return None
     finally:
@@ -172,7 +279,7 @@ def from_db(path: Path) -> dict | None:
         d.pop("weight", None)
     dyads.sort(key=lambda x: (-(x["h_abs"] or 0), x["name"]))
 
-    return {"dyads": dyads, "source": "db",
+    return {"dyads": dyads, "source": "db", "details": details,
             "global": global_index(dyads, shares),
             "registry_total": len(dyads)}
 
@@ -375,6 +482,10 @@ def build(demo_mode: bool = False) -> dict:
         print(f"  калибровка не собралась: {e}", file=sys.stderr)
 
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    # Раскрытие пар едет только в файлы пар — в index.json его нет намеренно,
+    # иначе главная страница потяжелела бы в разы ради данных, нужных лишь
+    # тому, кто открыл конкретную пару.
+    details = data.pop("details", {})
     payload = {**data, "built_at": stamp, "method_version": "0.3.1"}
     (SITE / "data" / "index.json").write_text(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -382,7 +493,8 @@ def build(demo_mode: bool = False) -> dict:
     # по диаде — отдельный файл: страница тянет только то, что показывает
     for d in data["dyads"]:
         (SITE / "data" / f"{d['dyad_id']}.json").write_text(
-            json.dumps({**d, "built_at": stamp}, ensure_ascii=False), encoding="utf-8")
+            json.dumps({**d, **details.get(d["dyad_id"], {}), "built_at": stamp},
+                       ensure_ascii=False), encoding="utf-8")
 
     tpl = (ROOT / "web" / "templates" / "index.html").read_text(encoding="utf-8")
     (SITE / "index.html").write_text(tpl, encoding="utf-8")
@@ -394,6 +506,13 @@ def build(demo_mode: bool = False) -> dict:
     p_acc = ROOT / "account.html"
     if p_acc.exists():
         shutil.copy2(p_acc, SITE / "account.html")
+
+    # Страница пары. Тоже отдельная, и по той же причине, что кабинет: она
+    # грузит свой файл данных, вчетверо тяжелее витрины, и нужна тому, кто
+    # захотел проверить конкретное число.
+    p_dyad = ROOT / "dyad.html"
+    if p_dyad.exists():
+        shutil.copy2(p_dyad, SITE / "dyad.html")
 
     for src, dst in [("design/styleguide.html", "styleguide.html"),
                      ("design/demo.html",      "design-demo.html"),
