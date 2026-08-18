@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse, json, sys, uuid
 from datetime import date, datetime, timedelta, timezone
 
-from . import compute as comp, db, dyads as dy, match, verify
+from . import calibrate, compute as comp, db, dyads as dy, match, verify
 from .sources import ucdp, gdelt, worldbank, simple
 from . import sanctions as sanc
 
@@ -199,6 +199,31 @@ def _sanction_event(dyad_id: str, ent_num: str, day: str, sign: int) -> dict:
         "event_type": kind,
         "payload": json.dumps({"ent_num": ent_num, "sign": sign}, ensure_ascii=False),
     }
+
+
+def cmd_calibrate(args):
+    """Обратный прогон по конфликтам с известным исходом."""
+    import json as _json
+    con = db.connect(args.db)
+    rep = calibrate.run(con)
+    print(f"порог {rep['threshold']}, окно {rep['window_months']} мес., "
+          f"блок — {rep['block']}")
+    print(f"{'конфликт':26} {'исход':11} {'пик':>6} {'опережение':>26}")
+    for r in rep["conflicts"]:
+        if r.get("lead") is None:
+            note = r.get("why") or r.get("note", "")
+            print(f"  {r['name']:26} {r['outcome']:11} "
+                  f"{str(r.get('peak','—')):>6} {note:>26}")
+        else:
+            print(f"  {r['name']:26} {r['outcome']:11} {r['peak']:>6} "
+                  f"{str(r['lead']) + ' мес.':>26}")
+    print(f"\nсигнал был у {rep['with_signal']} из {rep['n']}"
+          + (f", медианное опережение {rep['median_lead']:.0f} мес."
+             if rep["median_lead"] is not None else ""))
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as f:
+            _json.dump(rep, f, ensure_ascii=False, indent=1)
+        print(f"отчёт сохранён: {args.out}")
 
 
 def cmd_verify_coding(args):
@@ -511,6 +536,10 @@ def main(argv=None):
     g = sub.add_parser("pull-gdelt")
     g.add_argument("--slices", type=int, default=4)
     g.set_defaults(fn=cmd_pull_gdelt)
+
+    cb = sub.add_parser("calibrate", help="обратный прогон по завершённым конфликтам")
+    cb.add_argument("--out", default="")
+    cb.set_defaults(fn=cmd_calibrate)
 
     vc = sub.add_parser("verify-coding", help="сверить кодировку GDELT с моделью")
     vc.add_argument("--limit", type=int, default=20)
