@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="icon-32.png" sizes="32x32" type="image/png">
-<link rel="stylesheet" href="assets/styles.css?v=28">
+<link rel="stylesheet" href="assets/styles.css?v=29">
 </head>
 <body>
 
@@ -37,21 +37,85 @@
 
 <main id="main" class="acc wrap">
 
-  <!-- Не вошёл: одно поле и одна кнопка. Пароля нет вообще — вход по ссылке
-       из письма. Пароль, которого мы не храним, невозможно у нас украсть. -->
-  <section class="acc__box" id="signin" hidden>
-    <h1 class="acc__title">Вход</h1>
-    <p class="lede">Введите адрес — пришлём ссылку для входа. Пароля нет: он не нужен, а хранить его небезопасно.</p>
+  <!-- Вход и регистрация — одна форма в двух режимах. Два отдельных экрана
+       заставляли бы человека выбирать до того, как он вспомнил, есть ли у него
+       аккаунт; здесь он вводит адрес и пароль, а режим переключает ссылка. -->
+  <section class="acc__box" id="auth" hidden>
+    <h1 class="acc__title" id="authTitle">Вход</h1>
+    <p class="lede" id="authLede">Адрес почты и пароль. Тот же адрес получит уведомления, если вы их включите.</p>
 
-    <form class="acc__form" id="loginForm" novalidate>
+    <form class="acc__form" id="authForm" novalidate>
       <label class="acc__label" for="email">Почта</label>
       <input class="acc__input" id="email" name="email" type="email"
              autocomplete="email" inputmode="email" required placeholder="you@example.com">
-      <button class="acc__btn" type="submit" id="loginBtn">Прислать ссылку</button>
+
+      <label class="acc__label" for="password">Пароль</label>
+      <input class="acc__input" id="password" name="password" type="password"
+             autocomplete="current-password" required minlength="10">
+
+      <button class="acc__btn" type="submit" id="authBtn">Войти</button>
     </form>
 
-    <p class="acc__msg" id="loginMsg" hidden></p>
-    <p class="acc__fine">Ссылка действует 15 минут и срабатывает один раз.</p>
+    <p class="acc__msg" id="authMsg" hidden></p>
+
+    <div class="acc__links">
+      <button class="acc__link" type="button" id="modeBtn">Нет аккаунта — зарегистрироваться</button>
+      <button class="acc__link" type="button" id="forgotBtn">Забыли пароль?</button>
+    </div>
+    <p class="acc__fine" id="authFine">Пароль — не короче 10 символов. Длина надёжнее, чем набор значков: «корова-на-льду» крепче, чем «Pa$$w0rd».</p>
+  </section>
+
+  <!-- Зарегистрировался, но адрес не подтверждён. Отдельный экран, а не
+       сообщение под формой: пока человек не откроет письмо, ему тут делать
+       ровно одно действие, и оно должно быть единственным на экране. -->
+  <section class="acc__box" id="pending" hidden>
+    <h1 class="acc__title">Подтвердите адрес</h1>
+    <p class="lede">Мы отправили письмо со ссылкой на <span id="pendingEmail">ваш адрес</span>. Откройте ссылку — после этого можно войти.</p>
+
+    <div class="acc__actions">
+      <button class="acc__btn" type="button" id="resendBtn">Выслать письмо ещё раз</button>
+      <button class="acc__btn acc__btn--ghost" type="button" id="pendingBack">Вернуться ко входу</button>
+    </div>
+
+    <p class="acc__msg" id="pendingMsg" hidden></p>
+    <p class="acc__fine">Письмо идёт до минуты и может попасть в спам. Ссылка действует сутки. Если письма нет и через десять минут — напишите на support@brink.watch.</p>
+  </section>
+
+  <!-- Забытый пароль. Ответ здесь одинаков всегда — и для существующего
+       адреса, и для незнакомого: иначе форма превращается в способ проверять,
+       кто у нас зарегистрирован. -->
+  <section class="acc__box" id="forgot" hidden>
+    <h1 class="acc__title">Забытый пароль</h1>
+    <p class="lede">Пришлём на почту ссылку, по которой можно задать новый пароль.</p>
+
+    <form class="acc__form" id="forgotForm" novalidate>
+      <label class="acc__label" for="forgotEmail">Почта</label>
+      <input class="acc__input" id="forgotEmail" name="email" type="email"
+             autocomplete="email" inputmode="email" required placeholder="you@example.com">
+      <button class="acc__btn" type="submit" id="forgotSubmit">Прислать ссылку</button>
+    </form>
+
+    <p class="acc__msg" id="forgotMsg" hidden></p>
+    <div class="acc__links">
+      <button class="acc__link" type="button" id="backToAuth">Вернуться ко входу</button>
+    </div>
+  </section>
+
+  <!-- Новый пароль по ссылке из письма. Экран показывается только если в
+       адресе есть токен. -->
+  <section class="acc__box" id="reset" hidden>
+    <h1 class="acc__title">Новый пароль</h1>
+    <p class="lede">Задайте пароль. Все прежние входы на других устройствах при этом закроются — в этом и смысл.</p>
+
+    <form class="acc__form" id="resetForm" novalidate>
+      <label class="acc__label" for="resetPassword">Новый пароль</label>
+      <input class="acc__input" id="resetPassword" name="password" type="password"
+             autocomplete="new-password" required minlength="10">
+      <button class="acc__btn" type="submit" id="resetSubmit">Сохранить пароль</button>
+    </form>
+
+    <p class="acc__msg" id="resetMsg" hidden></p>
+    <p class="acc__fine">Ссылка действует час и срабатывает один раз.</p>
   </section>
 
   <!-- Вошёл -->
@@ -62,12 +126,33 @@
       <div><dt>Почта</dt><dd id="accEmail">—</dd></div>
       <div><dt>План</dt><dd id="accPlan">—</dd></div>
       <div><dt>Доступ до</dt><dd id="accUntil">—</dd></div>
+      <div><dt>Адрес подтверждён</dt><dd id="accVerified">—</dd></div>
     </dl>
+
+    <label class="acc__check">
+      <input type="checkbox" id="notifyBox">
+      <span>Присылать уведомления об изменениях по отслеживаемым парам. Отписаться можно в любой момент, аккаунт при этом остаётся.</span>
+    </label>
+    <p class="acc__msg" id="notifyMsg" hidden></p>
 
     <div class="acc__actions">
       <a class="acc__btn acc__btn--ghost" href="/">К барометру</a>
+      <button class="acc__btn acc__btn--ghost" type="button" id="changeBtn">Сменить пароль</button>
       <button class="acc__btn acc__btn--ghost" type="button" id="logoutBtn">Выйти</button>
     </div>
+
+    <form class="acc__form" id="changeForm" novalidate hidden>
+      <label class="acc__label" for="oldPassword">Текущий пароль</label>
+      <input class="acc__input" id="oldPassword" name="old_password" type="password"
+             autocomplete="current-password" required>
+
+      <label class="acc__label" for="newPassword">Новый пароль</label>
+      <input class="acc__input" id="newPassword" name="password" type="password"
+             autocomplete="new-password" required minlength="10">
+
+      <button class="acc__btn" type="submit" id="changeSubmit">Сохранить</button>
+    </form>
+    <p class="acc__msg" id="changeMsg" hidden></p>
 
     <p class="acc__fine" id="accFine"></p>
   </section>
@@ -87,6 +172,6 @@
 
 </main>
 
-<script src="assets/account.js?v=28"></script>
+<script src="assets/account.js?v=29"></script>
 </body>
 </html>

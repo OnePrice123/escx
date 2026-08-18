@@ -124,7 +124,7 @@ wrangler deploy
 Проверить локально, без сети и без облака:
 
 ```bash
-node api/test/test.mjs      # 59 проверок
+node api/test/test.mjs      # 166 проверок
 ```
 
 ---

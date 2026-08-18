@@ -9,3 +9,6 @@ node_modules/
 .DS_Store
 CLAUDE.local.md
 site/
+
+# локальный кэш wrangler — состояние сборки Worker, не исходники
+api/.wrangler/

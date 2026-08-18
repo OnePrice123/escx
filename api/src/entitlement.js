@@ -17,8 +17,20 @@ export const PLANS = {
  * Гость и человек с истёкшей подпиской — оба получают free, а не отказ:
  * бесплатная часть доступна всем, это витрина продукта.
  */
-export async function planFor(db, email, nowSec) {
+export async function planFor(db, email, nowSec, opts = {}) {
   if (!email) return { plan: 'free', status: 'anonymous', until: null };
+
+  // Регистрация не требует подтверждения адреса: почта ещё не заведена, и
+  // обязательное подтверждение закрыло бы кабинет насовсем. Но платное
+  // остаётся уязвимым местом — подписка приходит из платёжки с адресом, а
+  // аккаунт на этот адрес мог завести кто угодно раньше владельца. Как только
+  // письма пойдут, REQUIRE_VERIFIED_EMAIL=1 закрывает и это. Проверка стоит
+  // здесь, а не в обработчиках, — по тому же правилу, что и всё остальное.
+  if (opts.requireVerified) {
+    const u = await db.prepare('SELECT verified_at FROM users WHERE email = ?')
+      .bind(email).first();
+    if (!u || !u.verified_at) return { plan: 'free', status: 'unverified', until: null };
+  }
 
   const row = await db.prepare(
     `SELECT plan, status, active, current_period_end

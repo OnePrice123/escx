@@ -547,6 +547,29 @@ body {
 }
 .acc__fine { margin: 18px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--ink-3); }
 
+/* Ошибка отличается от подсказки только тоном текста: рамок и красных
+   плашек здесь нет по тем же причинам, что и во всём остальном интерфейсе. */
+.acc__msg--bad { border-left-color: var(--t4); color: var(--ink); }
+
+/* Второстепенные действия — «забыли пароль», «нет аккаунта». Кнопка, а не
+   ссылка: она ничего не открывает, а переключает эту же страницу. */
+.acc__links { margin: 18px 0 0; display: flex; gap: 18px; flex-wrap: wrap; }
+.acc__link {
+  appearance: none; background: none; border: 0; padding: 0; cursor: pointer;
+  font: 400 12.5px/1.6 var(--sans); color: var(--ink-2);
+  text-decoration: underline; text-decoration-color: var(--hair);
+  text-underline-offset: 3px;
+}
+.acc__link:hover { color: var(--ink); text-decoration-color: var(--ink-3); }
+
+/* Согласие на уведомления. Флажок оставлен родным: подменённый чекбокс
+   ломает доступность, а выигрыш здесь нулевой. */
+.acc__check {
+  margin: 26px 0 0; display: flex; gap: 10px; align-items: flex-start;
+  font-size: 13px; line-height: 1.6; color: var(--ink-2); cursor: pointer;
+}
+.acc__check input { margin-top: 3px; accent-color: var(--ink); }
+
 .acc__rows { margin: 26px 0 0; padding: 0; display: grid; gap: 0; }
 .acc__rows div {
   display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
