@@ -277,5 +277,21 @@ except ValueError as e:
 check("без прайса (тестовый режим) ноль допустим",
       Budget(sqlite3.connect(":memory:"), daily_usd=1.0).cost("что угодно", 10**6, 10**6) == 0)
 
+print("\n11. Чтение статей: вежливость и разбор")
+from escx import verify as V
+check("скрипты и стили вырезаются, а не уезжают в промпт",
+      "alert" not in V.html_to_text("<html><script>alert(1)</script><p>Текст</p></html>".encode()))
+check("текст извлекается", "Текст" in V.html_to_text("<html><p>Текст</p></html>".encode()))
+check("длина ограничена, чтобы не платить за мусор",
+      len(V.html_to_text(b"<p>" + b"a" * 99999 + b"</p>", limit=500)) <= 500)
+check("сущности раскрываются", "&" in V.html_to_text(b"<p>A &amp; B</p>"))
+# Недоступный robots.txt = запрет. Сайт, который не отвечает, мы не читаем.
+check("битый адрес не читается", V.allowed("не адрес") is False)
+check("код 19 и armed_incident сходятся", V.agrees("19", "armed_incident") is True)
+check("код 19 против rhetoric — расхождение", V.agrees("19", "rhetoric") is False)
+check("неизвестный код не сравнивается", V.agrees("99", "rhetoric") is None)
+check("User-Agent только ASCII, иначе запрос падает до сети",
+      all(ord(c) < 128 for c in V.UA))
+
 print(f"\n{'='*46}\nпройдено {ok}, провалено {fail}\n{'='*46}")
 sys.exit(1 if fail else 0)

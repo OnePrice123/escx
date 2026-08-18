@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse, json, sys, uuid
 from datetime import date, datetime, timedelta, timezone
 
-from . import compute as comp, db, dyads as dy, match
+from . import compute as comp, db, dyads as dy, match, verify
 from .sources import ucdp, gdelt, worldbank, simple
 from . import sanctions as sanc
 
@@ -199,6 +199,81 @@ def _sanction_event(dyad_id: str, ent_num: str, day: str, sign: int) -> dict:
         "event_type": kind,
         "payload": json.dumps({"ent_num": ent_num, "sign": sign}, ensure_ascii=False),
     }
+
+
+def cmd_verify_coding(args):
+    """Сверка кодировки GDELT с вердиктом модели на выборке событий.
+
+    Ничего не пишет в индекс — это измеритель. Выход: JSON с парами
+    «код GDELT / вид по модели», который скармливается llm-eval вместе с
+    ручной разметкой. Пока согласие не пройдёт порог, модель в индекс не идёт.
+    """
+    import json as _json
+    from .llm import build_prompt, validate, make_provider, Budget, PRICES
+    from .llm.extract import _parse_json
+
+    con = db.connect(args.db)
+    rows = list(con.execute(
+        "SELECT dyad_id, occurred_at, cameo_code, event_type, payload "
+        "FROM raw_events WHERE source='gdelt_export' "
+        "  AND substr(event_type,7,2) IN ('18','19','20','15') "
+        "ORDER BY occurred_at DESC LIMIT ?", (args.limit * 4,)))
+    if not rows:
+        print("нет событий для проверки"); return
+
+    provider = make_provider(args.provider)
+    bud = Budget(con, daily_usd=args.budget, prices=PRICES)
+    print(f"модель {provider.name}, лимит ${args.budget}")
+
+    out, seen_urls = [], set()
+    agree = disagree = unread = 0
+    for r in rows:
+        if len(out) >= args.limit:
+            break
+        url = (_json.loads(r["payload"] or "{}") or {}).get("url")
+        if not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        text = verify.fetch_article(url)
+        if not text:
+            unread += 1
+            continue
+
+        root = (r["event_type"] or "").replace("cameo:", "")[:2]
+        art = {"title": "", "body": text}
+        system, user = build_prompt(art, None)
+        try:
+            raw, ti, to = provider.complete(system, user)
+            bud.record(provider.name, ti, to)
+            ex = validate(_parse_json(raw), text)
+            kind = ex.indicator_kind
+        except Exception as e:
+            print(f"  {r['dyad_id']:9} {root} — модель не дала разметки: {str(e)[:70]}")
+            continue
+
+        ok = verify.agrees(root, kind)
+        mark = "=" if ok else "РАСХОЖДЕНИЕ"
+        if ok is True:
+            agree += 1
+        elif ok is False:
+            disagree += 1
+        print(f"  {r['dyad_id']:9} GDELT {root}->{verify.CAMEO_TO_KIND.get(root)}"
+              f"  модель->{kind}  {mark}")
+        out.append({"dyad_id": r["dyad_id"], "day": r["occurred_at"], "url": url,
+                    "cameo_root": root, "gdelt_kind": verify.CAMEO_TO_KIND.get(root),
+                    "llm_kind": kind, "llm_escalation": ex.escalation_level,
+                    "evidence": ex.evidence})
+
+    total = agree + disagree
+    print(f"\nсверено {total}, совпало {agree}, разошлось {disagree}"
+          + (f" ({100*disagree/total:.0f}% расхождений)" if total else "")
+          + f", не прочитано {unread}")
+    print(f"потрачено ${bud.spent_today():.5f}")
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as f:
+            _json.dump(out, f, ensure_ascii=False, indent=1)
+        print(f"разметка сохранена: {args.out}")
 
 
 def cmd_pull_unvotes(args):
@@ -436,6 +511,13 @@ def main(argv=None):
     g = sub.add_parser("pull-gdelt")
     g.add_argument("--slices", type=int, default=4)
     g.set_defaults(fn=cmd_pull_gdelt)
+
+    vc = sub.add_parser("verify-coding", help="сверить кодировку GDELT с моделью")
+    vc.add_argument("--limit", type=int, default=20)
+    vc.add_argument("--budget", type=float, default=0.50)
+    vc.add_argument("--provider", default=None, help="mock | gemini | openai")
+    vc.add_argument("--out", default="", help="куда сложить разметку для llm-eval")
+    vc.set_defaults(fn=cmd_verify_coding)
 
     sub.add_parser("pull-unvotes",
                    help="расстояние позиций в ООН").set_defaults(fn=cmd_pull_unvotes)
