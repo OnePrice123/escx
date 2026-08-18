@@ -388,6 +388,13 @@ def build(demo_mode: bool = False) -> dict:
     (SITE / "index.html").write_text(tpl, encoding="utf-8")
 
     # витрина дизайна и схема проекта едут вместе с сайтом
+    # Личный кабинет — отдельная страница: она не про данные, а про доступ,
+    # и подмешивать её в главную незачем. Живёт рядом со статикой, потому что
+    # вся работа идёт через Worker на /api.
+    p_acc = ROOT / "account.html"
+    if p_acc.exists():
+        shutil.copy2(p_acc, SITE / "account.html")
+
     for src, dst in [("design/styleguide.html", "styleguide.html"),
                      ("design/demo.html",      "design-demo.html"),
                      ("web/schema.html",       "schema.html")]:

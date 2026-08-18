@@ -512,6 +512,50 @@ body {
   .calrow__name { font-size: 13.5px; }
 }
 
+/* ── личный кабинет ───────────────────────────────────────────────
+   Узкая колонка и крупные поля: страница делает ровно одно действие,
+   и растягивать её на всю ширину незачем. */
+.acc { max-width: 540px; padding-block: clamp(36px, 7vw, 80px); }
+.acc__box { }
+.acc__title { margin: 0 0 10px; font: 400 clamp(26px, 3.4vw, 34px)/1.15 var(--serif); }
+.acc__form { margin: 26px 0 0; display: grid; gap: 10px; }
+.acc__label {
+  font: 600 10px/1 var(--sans); letter-spacing: .18em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.acc__input {
+  appearance: none; width: 100%;
+  border: 1px solid var(--hair); background: var(--paper-raised); color: var(--ink);
+  border-radius: 3px; padding: 12px 14px;
+  font: 400 16px/1.2 var(--sans);   /* не меньше 16px: иначе Safari зумит поле */
+}
+.acc__input:focus { outline: none; border-color: var(--ink-3); }
+.acc__btn {
+  appearance: none; cursor: pointer; display: inline-block; text-align: center;
+  border: 1px solid var(--ink); background: var(--ink); color: var(--paper);
+  border-radius: 3px; padding: 12px 18px;
+  font: 500 14px/1.2 var(--sans); text-decoration: none;
+  transition: opacity .18s;
+}
+.acc__btn:disabled { opacity: .55; cursor: default; }
+.acc__btn--ghost { background: transparent; color: var(--ink-2); border-color: var(--hair); }
+.acc__btn--ghost:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.acc__msg {
+  margin: 16px 0 0; font-size: 13.5px; line-height: 1.65; color: var(--ink-2);
+  border-left: 2px solid var(--t3); padding-left: 12px;
+}
+.acc__fine { margin: 18px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--ink-3); }
+
+.acc__rows { margin: 26px 0 0; padding: 0; display: grid; gap: 0; }
+.acc__rows div {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  padding: 13px 0; border-top: 1px solid var(--hair-soft);
+}
+.acc__rows dt { font-size: 13px; color: var(--ink-3); }
+.acc__rows dd { margin: 0; font-size: 15px; color: var(--ink); text-align: end; }
+.acc__actions { margin: 26px 0 0; display: flex; gap: 10px; flex-wrap: wrap; }
+
 .toplist { list-style: none; margin: 26px 0 0; padding: 0; }
 .toprow {
   display: grid;

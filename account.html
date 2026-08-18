@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Личный кабинет — brink.watch</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="icon-32.png" sizes="32x32" type="image/png">
+<link rel="stylesheet" href="assets/styles.css?v=28">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar__in">
+    <a class="brand" href="/" aria-label="brink.watch — на главную">
+      <svg class="brand__glyph" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="bmg" gradientUnits="userSpaceOnUse" x1="34.5" y1="0" x2="75.4" y2="0">
+            <stop class="s-ash" offset="0" stop-opacity=".28"/>
+            <stop class="s-ember" offset=".55" stop-opacity=".72"/>
+            <stop class="s-ember" offset="1"/>
+          </linearGradient>
+          <radialGradient id="bmh">
+            <stop class="s-ember" offset="0" stop-opacity=".45"/>
+            <stop class="s-ember" offset="1" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <path d="M 34.50 76.85 A 31 31 0 1 1 75.39 32.22" fill="none" stroke="url(#bmg)" stroke-width="10" stroke-linecap="round"/>
+        <circle cx="75.4" cy="32.2" r="17.5" fill="url(#bmh)"/>
+        <circle class="c-ember" cx="75.4" cy="32.2" r="5"/>
+      </svg>
+      <span class="brand__name">brink<span class="brand__dot">·</span>watch</span>
+    </a>
+  </div>
+</header>
+
+<main id="main" class="acc wrap">
+
+  <!-- Не вошёл: одно поле и одна кнопка. Пароля нет вообще — вход по ссылке
+       из письма. Пароль, которого мы не храним, невозможно у нас украсть. -->
+  <section class="acc__box" id="signin" hidden>
+    <h1 class="acc__title">Вход</h1>
+    <p class="lede">Введите адрес — пришлём ссылку для входа. Пароля нет: он не нужен, а хранить его небезопасно.</p>
+
+    <form class="acc__form" id="loginForm" novalidate>
+      <label class="acc__label" for="email">Почта</label>
+      <input class="acc__input" id="email" name="email" type="email"
+             autocomplete="email" inputmode="email" required placeholder="you@example.com">
+      <button class="acc__btn" type="submit" id="loginBtn">Прислать ссылку</button>
+    </form>
+
+    <p class="acc__msg" id="loginMsg" hidden></p>
+    <p class="acc__fine">Ссылка действует 15 минут и срабатывает один раз.</p>
+  </section>
+
+  <!-- Вошёл -->
+  <section class="acc__box" id="cabinet" hidden>
+    <h1 class="acc__title">Личный кабинет</h1>
+
+    <dl class="acc__rows">
+      <div><dt>Почта</dt><dd id="accEmail">—</dd></div>
+      <div><dt>План</dt><dd id="accPlan">—</dd></div>
+      <div><dt>Доступ до</dt><dd id="accUntil">—</dd></div>
+    </dl>
+
+    <div class="acc__actions">
+      <a class="acc__btn acc__btn--ghost" href="/">К барометру</a>
+      <button class="acc__btn acc__btn--ghost" type="button" id="logoutBtn">Выйти</button>
+    </div>
+
+    <p class="acc__fine" id="accFine"></p>
+  </section>
+
+  <!-- Пока не знаем, вошёл или нет -->
+  <section class="acc__box" id="loading">
+    <p class="lede">Проверяем сессию…</p>
+  </section>
+
+  <!-- Бэкенд не отвечает. Показываем это прямо, а не пустой формой: человек
+       иначе решит, что он ввёл не тот адрес. -->
+  <section class="acc__box" id="offline" hidden>
+    <h1 class="acc__title">Кабинет недоступен</h1>
+    <p class="lede">Служба входа не отвечает. Барометр при этом работает — он статический и от кабинета не зависит.</p>
+    <div class="acc__actions"><a class="acc__btn acc__btn--ghost" href="/">К барометру</a></div>
+  </section>
+
+</main>
+
+<script src="assets/account.js?v=28"></script>
+</body>
+</html>
