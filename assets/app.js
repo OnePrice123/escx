@@ -508,7 +508,13 @@ function pointDate(conf, i) {
    помесячно, при возврате ждёт помесячный график, а не суточный. */
 let SCALE = localStorage.getItem('px.scale') || 'day';
 
-const SCALE_DAYS = { day: 1, week: 7, month: 30 };
+const SCALE_DAYS = { day: 1, week: 7, month: 30, all: 30 };
+
+/* Масштаб «всё время» считается ТОЛЬКО по кинетике UCDP: медиапоток начался
+   там, где начался сбор, голосования в ООН годовые, санкции — состояние на
+   сегодня. Подпись под графиком обязана это говорить, иначе читатель решит,
+   что тридцать шесть лет измерялись тем же способом, что последняя неделя. */
+const SCALE_KINETIC_ONLY = 'all';
 
 function scaledSeries(c) {
   const s = c.scales && c.scales[SCALE];
@@ -533,13 +539,30 @@ function drawChart() {
   const list = chartSeries();
   const ref = list[0];
   const n = Math.max(...list.map(c => scaledSeries(c).length));
-  const peak = Math.max(...list.flatMap(c => scaledSeries(c)));
-  const yMax = Math.max(45, Math.ceil((peak + 5) / 10) * 10);
+  /* Ось подстраивается под данные, как на биржевом графике.
+     Раньше она шла от нуля до восьмидесяти всегда, и ряд, живущий в полосе
+     67.8…69.8, выглядел идеально ровной чертой — хотя менялся каждый день.
+     Ноль внизу нужен там, где важна абсолютная величина; здесь важна
+     ДИНАМИКА, а её при фиксированной оси не видно вовсе.
+
+     MIN_SPAN держит минимальную высоту окна: без него ряд, стоящий на месте,
+     растянулся бы на весь экран и превратил шум четвёртого знака в
+     драматические колебания. Это была бы ровно обратная ложь. */
+  const MIN_SPAN = 12;
+  const all = list.flatMap(c => scaledSeries(c));
+  const lo = Math.min(...all), hi = Math.max(...all);
+  const mid = (lo + hi) / 2;
+  const span = Math.max(MIN_SPAN, (hi - lo) * 1.35);
+  const yMin = Math.max(0, Math.min(lo - (hi - lo) * 0.18, mid - span / 2));
+  const yMax = Math.min(100, Math.max(hi + (hi - lo) * 0.18, mid + span / 2));
 
   const X = i => PAD.l + (PW * i) / (n - 1);
-  const Y = v => PAD.t + PH - (PH * v) / yMax;
+  const Y = v => PAD.t + PH - (PH * (v - yMin)) / (yMax - yMin);
 
-  for (let v = 0; v <= yMax; v += 10) {
+  // Шаг сетки под окно: при размахе в три пункта десятки дают одну линию.
+  const rawStep = (yMax - yMin) / 5;
+  const step = [1, 2, 5, 10, 20, 25].find(x => x >= rawStep) || 25;
+  for (let v = Math.ceil(yMin / step) * step; v <= yMax; v += step) {
     el('line', { x1: PAD.l, y1: Y(v), x2: PAD.l + PW, y2: Y(v), stroke: cssVar('--hair-soft'), 'stroke-width': 1 }, grid);
     const lbl = el('text', {
       x: PAD.l - 10, y: Y(v) + 4, 'text-anchor': 'end', fill: cssVar('--ink-3'),
@@ -549,7 +572,9 @@ function drawChart() {
   }
 
   // границы зон — привязка графика к циферблату
-  [15, 35].forEach(v => {
+  // Границы зон — только те, что попали в окно. Раньше рисовались всегда и
+  // при подстроенной оси уезжали за край, оставляя подписи в пустоте.
+  [15, 35, 50, 65, 85].filter(v => v > yMin && v < yMax).forEach(v => {
     el('line', { x1: PAD.l, y1: Y(v), x2: PAD.l + PW, y2: Y(v), stroke: zoneColor(v - 1), 'stroke-width': 1, 'stroke-dasharray': '2 5', opacity: .8 }, grid);
     const lbl = el('text', {
       x: PAD.l + PW, y: Y(v) - 6, 'text-anchor': 'end', fill: zoneColor(v - 1),
@@ -606,6 +631,13 @@ function drawChart() {
       'stroke-dasharray': k === 1 ? '5 3' : 'none',
     }, line);
   });
+
+  // Оговорка про глубокий масштаб: он о боевых действиях, а не обо всём индексе.
+  const note = $('#chartNote');
+  if (note) {
+    note.hidden = SCALE !== SCALE_KINETIC_ONLY;
+    note.textContent = t('scaleAllNote');
+  }
 
   // Уголёк на конце ряда — та же метка, что на дуге и в знаке.
   if (list.length === 1) {

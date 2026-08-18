@@ -465,6 +465,10 @@ body {
 .scalebtn.is-on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .scalebtn:disabled { opacity: .4; cursor: default; }
 .scales__note { font-size: 11.5px; color: var(--ink-3); margin-inline-start: 6px; }
+.chart__note {
+  margin: 0 0 12px; max-width: 84ch; font-size: 12.5px; line-height: 1.65;
+  color: var(--ink-2); border-left: 2px solid var(--hair); padding-left: 12px;
+}
 
 /* ── обратный прогон ──────────────────────────────────────────────
    Три числа одним кеглем. Сделать «16 из 19» крупнее «32 %» значило бы

@@ -23,12 +23,13 @@
 """
 from __future__ import annotations
 import json
+import math
 import statistics as st
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
 
-from .indicators import MAD_K, Z_CAP, heat
+from .indicators import MAD_K, Z_CAP, heat, winsorize
 
 CONFIG = Path(__file__).resolve().parent.parent / "config" / "calibration.json"
 
@@ -186,6 +187,103 @@ def control(con, path: Path | None = None) -> dict:
     return {"conflicts": per, "crossings": total, "hits": hits, "false": false,
             "precision": (hits / total) if total else None,
             "horizon_m": HORIZON_M}
+
+
+def deep_scale(fatalities: float) -> float:
+    """Логарифм боевых смертей за месяц.
+
+    Потери распределены с тяжёлым хвостом: у одной и той же пары бывает ноль,
+    двадцать и сто тысяч в месяц. В линейной шкале такой ряд сжимается в две
+    ступени — «война» и «не война», — и всё между ними теряется. Проверено на
+    России с Украиной: без логарифма весь Донбасс 2014-2021 годов, где счёт шёл
+    на тысячи, читался ровно как спокойный 2010-й.
+
+    log1p, а не log: месяцев с нулём большинство, и они обязаны остаться нулём,
+    а не уйти в минус бесконечность.
+    """
+    return math.log1p(max(0.0, fatalities))
+
+
+def deep_reference(con) -> tuple[float, float]:
+    """Общая опора для глубоких графиков: медиана и MAD по ВСЕМ парам сразу.
+
+    Считать опору по собственной истории пары здесь нельзя, и это выяснилось на
+    живых данных. У России с Украиной двадцать пять лет нулей до 2014-го: их
+    медиана равна нулю, MAD тоже, и в пересчёте война 2022 года с девяноста
+    девятью тысячами погибших давала накал 50 — ровно столько же, сколько
+    спокойный 2010-й. Своя история как мера работает на коротком окне, где она
+    описывает «норму пары», и разваливается на длинном, где нормы просто нет.
+
+    Общая опора делает глубокий график сравнимым и во времени, и между парами:
+    сто тысяч погибших за месяц читаются как много при любом прошлом.
+    """
+    vals: list[float] = []
+    for r in con.execute(
+            "SELECT dyad_id, substr(occurred_at,1,7) m, SUM(fatalities) f "
+            "FROM raw_events WHERE dyad_id IS NOT NULL AND source LIKE 'ucdp%' "
+            "GROUP BY dyad_id, m"):
+        vals.append(deep_scale(float(r["f"] or 0)))
+    if len(vals) < 8:
+        return (0.0, 0.0)
+    v = winsorize(vals)
+    med = st.median(v)
+    mad = st.median([abs(x - med) for x in v])
+    if mad == 0:
+        sd = st.pstdev(v)
+        mad = sd / MAD_K if sd else 0.0
+    return (med, mad)
+
+
+def dyad_deep_history(con, dyad_id: str,
+                      ref: tuple[float, float] | None = None
+                      ) -> tuple[list[str], list[float]]:
+    """Помесячная история накала по паре за всю глубину UCDP.
+
+    Отдельный путь, а не расширение суточного расчёта: посуточно на тридцать
+    шесть лет это под четверть миллиона строк на двадцать пар, и считается
+    минутами. Помесячно — четыреста точек на пару, доли секунды.
+
+    Считается ТОЛЬКО кинетика: медиапоток начинается там, где начался сбор,
+    голосования в ООН годовые, санкции — состояние на сегодня. Глубокий график
+    показывает историю боевых действий, и подписывать его надо именно так.
+
+    Для пары без событий UCDP возвращается пусто — у Китая с Тайванем боевых
+    смертей в выгрузке нет вовсе, и рисовать им прямую на пятьдесят значило бы
+    выдать отсутствие войны за измеренное спокойствие.
+    """
+    fat: dict[str, int] = {}
+    for r in con.execute(
+            "SELECT occurred_at, fatalities FROM raw_events "
+            "WHERE dyad_id=? AND source LIKE 'ucdp%' AND occurred_at IS NOT NULL",
+            (dyad_id,)):
+        m = r["occurred_at"][:7]
+        fat[m] = fat.get(m, 0) + (r["fatalities"] or 0)
+    if not fat:
+        return [], []
+
+    # Ряд начинается НЕ с первого события пары, а с начала покрытия UCDP.
+    # Разница принципиальная: у России с Украиной первое боевое событие
+    # датировано мартом 2014-го, и если начать с него, график покажет войну
+    # как данность. А UCDP покрывает весь мир с 1989 года, значит ноль событий
+    # в 2010-м — это ИЗМЕРЕННОЕ спокойствие, а не отсутствие данных. Именно оно
+    # и отвечает на вопрос «как к этому шло».
+    first = con.execute(
+        "SELECT MIN(occurred_at) a FROM raw_events WHERE source LIKE 'ucdp%'"
+    ).fetchone()["a"]
+    last = max(fat)
+    if first:
+        fat.setdefault(first[:7], 0)
+    months = all_months(fat)
+    if len(months) < 24:
+        return [], []
+
+    med, mad = ref if ref else deep_reference(con)
+    out = []
+    for m in months:
+        v = deep_scale(fat.get(m, 0))
+        z = 0.0 if not mad else max(-Z_CAP, min(Z_CAP, (v - med) / (MAD_K * mad)))
+        out.append(heat({"kinetic": z}))
+    return months, out
 
 
 def run(con, path: Path | None = None) -> dict:

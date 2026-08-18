@@ -82,6 +82,8 @@ const I18N = {
     f5: 'Ужесточение формулировок в заявлениях официальных представителей с обеих сторон',
     f6: 'Возобновлена работа технической группы по судоходству',
 
+    scaleAll: 'Всё время',
+    scaleAllNote: 'Весь период считается только по боевым событиям UCDP — медиапоток, дипломатия и санкции такой глубины не имеют. Ноль до первого события означает измеренное спокойствие: UCDP покрывает мир с 1989 года.',
     scaleDay: 'День',
     scaleWeek: 'Неделя',
     scaleMonth: 'Месяц',
@@ -256,6 +258,8 @@ const I18N = {
     f5: 'Harder wording in official statements from both sides',
     f6: 'Technical working group on shipping resumed',
 
+    scaleAll: 'All time',
+    scaleAllNote: 'The full period is computed from UCDP battle events only — media, diplomacy and sanctions have no such depth. Zero before the first event means measured calm: UCDP covers the world from 1989.',
     scaleDay: 'Day',
     scaleWeek: 'Week',
     scaleMonth: 'Month',
@@ -430,6 +434,8 @@ const I18N = {
     f5: 'Жорсткіші формулювання в заявах офіційних представників з обох боків',
     f6: 'Відновлено роботу технічної групи із судноплавства',
 
+    scaleAll: 'Увесь час',
+    scaleAllNote: 'Весь період рахується лише за бойовими подіями UCDP.',
     scaleDay: 'День',
     scaleWeek: 'Тиждень',
     scaleMonth: 'Місяць',

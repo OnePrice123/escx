@@ -88,6 +88,19 @@ def from_db(path: Path) -> dict | None:
         if not rows:
             return None
 
+        # Глубокая история считается один раз на прогон, до цикла по диадам.
+        deep: dict[str, tuple[list[str], list[float]]] = {}
+        try:
+            sys.path.insert(0, str(ROOT / "ingest"))
+            from escx import calibrate as _cal
+            _ref = _cal.deep_reference(con)      # одна опора на все пары
+            for r0 in con.execute("SELECT dyad_id FROM dyads WHERE status='active'"):
+                h = _cal.dyad_deep_history(con, r0["dyad_id"], _ref)
+                if h[1]:
+                    deep[r0["dyad_id"]] = h
+        except Exception as e:                            # noqa: BLE001
+            print(f"  глубокая история не собралась: {e}", file=sys.stderr)
+
         series: dict[str, list[int]] = {}
         coverage: dict[str, list[int]] = {}
         for r in con.execute("SELECT dyad_id, day, h_abs, data_coverage FROM heat_daily "
@@ -138,6 +151,17 @@ def from_db(path: Path) -> dict | None:
             "week":  _bucket(cov, 7)[-104:],
             "month": _bucket(cov, 30)[-36:],
         }
+
+        # Вся глубина UCDP, помесячно и только по кинетике. Нужна, чтобы было
+        # видно, КАК конфликт к этому шёл: у России с Украиной первое боевое
+        # событие датировано мартом 2014-го, а до него — пусто, и это тоже
+        # факт, который график обязан показывать.
+        dm, dh = deep.get(d["dyad_id"], ([], []))
+        if dh:
+            d["series"]["all"] = [round(x) for x in dh]
+            d["series_all_from"] = dm[0]
+            d["coverage"]["all"] = [20] * len(dh)         # только кинетика
+
         d["events_30d"] = None if d.get("events_30d") is None else int(d["events_30d"])
         d["weight"] = wt.consequence(d["side_a"], d["side_b"], shares)
         dyads.append(d)
