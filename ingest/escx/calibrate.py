@@ -116,6 +116,78 @@ def lead_months(series: list[float], threshold: float = THRESHOLD) -> tuple[int 
     return None, "порог не достигнут"
 
 
+HORIZON_M = 36         # за сколько месяцев после сигнала развязка ещё считается «той самой»
+
+
+def all_months(fat: dict[str, int]) -> list[str]:
+    """Все месяцы от первого события до последнего, без пропусков."""
+    if not fat:
+        return []
+    lo, hi = min(fat), max(fat)
+    y, m = int(lo[:4]), int(lo[5:7])
+    out = []
+    while f"{y:04d}-{m:02d}" <= hi:
+        out.append(f"{y:04d}-{m:02d}")
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+    return out
+
+
+def crossings(series: list[float], threshold: float = THRESHOLD) -> list[int]:
+    """Индексы всех переходов порога снизу вверх."""
+    return [i for i in range(1, len(series))
+            if series[i - 1] < threshold <= series[i]]
+
+
+def control(con, path: Path | None = None) -> dict:
+    """Ложные срабатывания: переходы порога, за которыми развязки НЕ последовало.
+
+    Без этого счёта «сигнал у 16 из 19» не значит почти ничего. Метрика,
+    которая срабатывает перед каждым урегулированием и заодно ещё двадцать раз
+    посреди войны, бесполезна — а по одним только попаданиям это неотличимо.
+
+    Контроль берётся из тех же конфликтов, но по ВСЕЙ их истории, а не по окну
+    перед развязкой. Каждый переход порога проверяется на то, наступила ли
+    известная развязка в течение HORIZON_M месяцев после него. Не наступила —
+    ложная тревога.
+
+    Ограничение, которое надо назвать: развязка известна только одна на
+    конфликт, поэтому ранние переходы в длинных войнах почти неизбежно
+    попадают в ложные. Это делает оценку ПЕССИМИСТИЧНОЙ, и лучше так, чем
+    наоборот.
+    """
+    hits = false = 0
+    per = []
+    for c in load_set(path):
+        fat = monthly_fatalities(con, c["conflict_id"])
+        months = all_months(fat)
+        if len(months) < 12:
+            continue
+        hs = heat_series(fat, months)
+        res = c["resolved"][:7]
+        h = f = 0
+        for i in crossings(hs):
+            # развязка попадает в горизонт после сигнала?
+            y, m = int(months[i][:4]), int(months[i][5:7])
+            m += HORIZON_M
+            y += (m - 1) // 12
+            m = (m - 1) % 12 + 1
+            if months[i] <= res <= f"{y:04d}-{m:02d}":
+                h += 1
+            else:
+                f += 1
+        hits += h
+        false += f
+        per.append({"name": c["name"], "months": len(months),
+                    "crossings": h + f, "hits": h, "false": f})
+    total = hits + false
+    return {"conflicts": per, "crossings": total, "hits": hits, "false": false,
+            "precision": (hits / total) if total else None,
+            "horizon_m": HORIZON_M}
+
+
 def run(con, path: Path | None = None) -> dict:
     rows = []
     for c in load_set(path):

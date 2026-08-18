@@ -220,6 +220,18 @@ def cmd_calibrate(args):
     print(f"\nсигнал был у {rep['with_signal']} из {rep['n']}"
           + (f", медианное опережение {rep['median_lead']:.0f} мес."
              if rep["median_lead"] is not None else ""))
+    ctl = calibrate.control(con)
+    print(f"\nКОНТРОЛЬНАЯ ГРУППА: все переходы порога по полной истории")
+    print(f"{'конфликт':26} {'мес.':>6} {'переходов':>10} {'из них ложных':>14}")
+    for r in sorted(ctl["conflicts"], key=lambda x: -x["false"]):
+        if r["crossings"]:
+            print(f"  {r['name']:26} {r['months']:>6} {r['crossings']:>10} {r['false']:>14}")
+    if ctl["precision"] is not None:
+        print(f"\nвсего переходов {ctl['crossings']}: попаданий {ctl['hits']}, "
+              f"ложных {ctl['false']} — доля попаданий {ctl['precision']:.0%} "
+              f"при горизонте {ctl['horizon_m']} мес.")
+    rep["control"] = ctl
+
     if args.out:
         with open(args.out, "w", encoding="utf-8") as f:
             _json.dump(rep, f, ensure_ascii=False, indent=1)
