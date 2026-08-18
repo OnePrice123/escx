@@ -147,6 +147,11 @@ const I18N = {
 
     uOil: 'нефть', uGas: 'газ', uLng: 'СПГ', uWheat: 'пшеница', uTrade: 'морская торговля',
 
+    calStatRose: 'конфликтов, где индекс поднимался перед развязкой',
+    calStatPrecision: 'переходов порога, за которыми развязка последовала',
+    calStatMedian: 'медианное опережение сигнала',
+    calMonths: 'мес.',
+    calWarn: 'Читать обе цифры вместе. Первая говорит, что индекс улавливает эскалацию. Вторая — что переход порога сам по себе развязку не предсказывает: тот же порог переходится 130 раз, и две трети переходов ничем не заканчиваются. Оценка занижена намеренно: у конфликта известна одна развязка, поэтому все ранние переходы в длинных войнах засчитаны ложными.',
     calTitle: 'Обратный прогон',
     calSub: 'Индекс прогоняется по конфликтам, которые уже завершились и исход которых известен. Вопрос один: поднималась ли стрелка заранее — и за сколько.',
     calBadge: 'Даты и соглашения реальны · кривые модельные',
@@ -316,6 +321,11 @@ const I18N = {
 
     uOil: 'oil', uGas: 'gas', uLng: 'LNG', uWheat: 'wheat', uTrade: 'seaborne trade',
 
+    calStatRose: 'conflicts where the index rose before resolution',
+    calStatPrecision: 'threshold crossings actually followed by a resolution',
+    calStatMedian: 'median lead of the signal',
+    calMonths: 'mo.',
+    calWarn: 'Read both numbers together. The first says the index picks up escalation. The second says a threshold crossing on its own does not predict resolution: the same threshold is crossed 130 times, and two thirds of those crossings lead nowhere. The estimate is deliberately conservative — each conflict has one known resolution, so every earlier crossing in a long war counts as false.',
     calTitle: 'Backtest',
     calSub: 'The index is run over conflicts that have already ended and whose outcome is known. One question: did the needle rise in advance — and by how long.',
     calBadge: 'Dates and agreements are real · curves are modelled',
@@ -485,6 +495,11 @@ const I18N = {
 
     uOil: 'нафта', uGas: 'газ', uLng: 'ЗПГ', uWheat: 'пшениця', uTrade: 'морська торгівля',
 
+    calStatRose: 'конфліктів, де індекс піднімався перед розв’язкою',
+    calStatPrecision: 'переходів порога, за якими розв’язка настала',
+    calStatMedian: 'медіанне випередження сигналу',
+    calMonths: 'міс.',
+    calWarn: 'Читати обидві цифри разом. Перша каже, що індекс уловлює ескалацію. Друга — що перехід порога сам собою розв’язку не передбачає.',
     calTitle: 'Зворотний прогін',
     calSub: 'Індекс проганяється по конфліктах, які вже завершилися і чий результат відомий. Питання одне: чи піднімалася стрілка заздалегідь — і за скільки.',
     calBadge: 'Дати й угоди реальні · криві модельні',

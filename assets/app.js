@@ -985,7 +985,9 @@ function renderAll() {
   section('#divergence',  HAS.divergence,  paintDivergence);
   section('#matrix',      HAS.matrix,      paintMatrix);
   section('#ripples',     HAS.chokepoints, paintChokepoints);
-  section('#calibration', HAS.calibration, paintCalibration);
+  // Калибровка живёт своим циклом: она грузится отдельным файлом и меняется
+  // раз в месяцы, тогда как витрина — каждую ночь.
+  paintCalib();
   section('.sidecard',    HAS.live);
 
   // Леджер и оси делят одну сетку: если ушёл один, второй занимает всю ширину.

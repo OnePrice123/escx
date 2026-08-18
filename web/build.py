@@ -332,6 +332,24 @@ def build(demo_mode: bool = False) -> dict:
         else:
             print(f"  нет brand/{f} — соберите: python3 brand/rasterize.py", file=sys.stderr)
 
+    # Обратный прогон. Кладётся отдельным файлом, а не в index.json: он меняется
+    # раз в месяцы, а витрина — каждую ночь, и таскать его в каждом ответе
+    # незачем. Страница грузит его только когда доходит до раздела.
+    try:
+        sys.path.insert(0, str(ROOT / "ingest"))
+        from escx import calibrate as cal, db as _db
+        con = _db.connect(str(ROOT / "ingest" / "escx.db"))
+        rep = cal.run(con)
+        rep["control"] = cal.control(con)
+        (SITE / "data" / "calibration.json").write_text(
+            json.dumps(rep, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        print(f"  калибровка: {rep['with_signal']} из {rep['n']}, "
+              f"ложных {rep['control']['false']} из {rep['control']['crossings']}")
+    except Exception as e:                       # noqa: BLE001
+        # Обратный прогон — не повод ронять сборку сайта: без него раздел
+        # просто не появится, а витрина с числами важнее.
+        print(f"  калибровка не собралась: {e}", file=sys.stderr)
+
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     payload = {**data, "built_at": stamp, "method_version": "0.3.1"}
     (SITE / "data" / "index.json").write_text(

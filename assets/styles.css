@@ -466,6 +466,48 @@ body {
 .scalebtn:disabled { opacity: .4; cursor: default; }
 .scales__note { font-size: 11.5px; color: var(--ink-3); margin-inline-start: 6px; }
 
+/* ── обратный прогон ──────────────────────────────────────────────
+   Три числа одним кеглем. Сделать «16 из 19» крупнее «32 %» значило бы
+   подсказать читателю, какую цифру запомнить, — а запомнить надо обе. */
+.cal__stats {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(16px, 3vw, 40px); margin: 24px 0 0; padding: 0;
+}
+.cal__stats div { margin: 0; }
+.cal__stats dt { font: 300 clamp(26px, 3vw, 34px)/1 var(--sans); letter-spacing: -.03em; color: var(--ink); }
+.cal__stats dd { margin: 8px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--ink-3); }
+
+.cal__warn {
+  margin: 20px 0 0; max-width: 84ch;
+  font-size: 13px; line-height: 1.7; color: var(--ink-2);
+  border-left: 2px solid var(--t3); padding-left: 14px;
+}
+
+.cal__board { margin-top: 26px; }
+.calrow {
+  display: grid; grid-template-columns: minmax(0, 1fr) 220px 132px;
+  align-items: center; gap: 18px;
+  padding: 12px 0; border-top: 1px solid var(--hair-soft);
+}
+.calrow__name { display: block; font-size: 14.5px; color: var(--ink); }
+.calrow__acc { display: block; margin-top: 3px; font-size: 11.5px; color: var(--ink-3); }
+.calrow__right { text-align: end; }
+.calrow__lead { font: 500 15px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+/* Отсутствие сигнала — не провал и не успех, а факт. Поэтому нейтрально. */
+.calrow__none { font-size: 11.5px; color: var(--ink-3); line-height: 1.4; display: inline-block; }
+.cal__note { margin: 20px 0 0; max-width: 84ch; font-size: 12.5px; line-height: 1.7; color: var(--ink-3); }
+
+@media (max-width: 860px) {
+  .calrow { grid-template-columns: minmax(0, 1fr) 108px; }
+  .calrow__spark { display: none; }
+}
+@media (max-width: 620px) {
+  .cal__stats { grid-template-columns: 1fr; gap: 18px; }
+  .cal__stats dt { font-size: 24px; }
+  .calrow { gap: 12px; padding: 10px 0; }
+  .calrow__name { font-size: 13.5px; }
+}
+
 .toplist { list-style: none; margin: 26px 0 0; padding: 0; }
 .toprow {
   display: grid;
@@ -891,50 +933,12 @@ body {
   display: flex; flex-wrap: wrap; align-items: flex-start;
   justify-content: space-between; gap: 16px 30px;
 }
-.cal__badge {
-  margin: 6px 0 0;
-  display: inline-flex; align-items: center; gap: 8px;
-  font: 600 10.5px/1.3 var(--sans); letter-spacing: .1em; text-transform: uppercase;
-  color: color-mix(in oklab, var(--rust) 74%, var(--ink));
-  border: 1px solid color-mix(in oklab, var(--rust) 32%, transparent);
-  background: color-mix(in oklab, var(--rust) 8%, transparent);
-  border-radius: 2px; padding: 8px 11px; max-width: 34ch;
-}
-.cal__badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
 
-.cal__stats {
-  margin: 28px 0 0; padding: 18px 0;
-  display: grid; gap: 18px 24px;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  border-block: 1px solid var(--hair);
-}
-.cal__stats > div { display: flex; flex-direction: column; gap: 5px; }
-.cal__stats dt { margin: 0; font-size: 27px; font-weight: 500; line-height: 1; letter-spacing: -.02em; }
-.cal__stats dd { margin: 0; font-size: 12.5px; line-height: 1.35; color: var(--ink-3); }
 
-.cal__board {
-  margin-top: 26px;
-  display: grid; gap: 1px;
-  grid-template-columns: repeat(auto-fit, minmax(272px, 1fr));
-  background: var(--hair-soft);
-  border: 1px solid var(--hair-soft);
-  border-radius: 4px; overflow: hidden;
-}
 
-.calcard { background: var(--paper-raised); padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 10px; }
-.calcard__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.calcard__name { margin: 0; font: 400 17px/1.2 var(--serif); }
-.calcard__years { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
 
 .spark { display: block; width: 100%; height: auto; }
 
-.calcard__foot { display: flex; flex-direction: column; gap: 7px; }
-.calcard__accord { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); }
-.calcard__row { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
-.calcard__lead { font-size: 12px; color: var(--ink-2); }
-.calcard__lead b { font-weight: 600; color: var(--z5); }
-.calcard__lead.is-none { color: var(--ink-3); font-style: italic; }
-.calcard__note { margin: 0; font-size: 11.5px; line-height: 1.45; color: var(--ink-3); }
 
 .chip--negotiated { --chipColor: var(--verdigris); }
 .chip--ceasefire  { --chipColor: var(--brass); }
@@ -942,19 +946,6 @@ body {
 
 .cal__note { margin: 14px 0 0; font-size: 12.5px; color: var(--ink-3); max-width: 78ch; }
 
-.cal__read { margin-top: 30px; }
-.callist { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); }
-.callist li {
-  font-size: 13.5px; line-height: 1.55; color: var(--ink-2);
-  border-inline-start: 2px solid var(--hair);
-  padding-inline-start: 14px;
-}
-.cal__real {
-  margin: 20px 0 0; max-width: 78ch;
-  font-size: 12.5px; line-height: 1.55; color: var(--ink-3);
-  border-inline-start: 2px solid var(--rust);
-  padding-inline-start: 14px;
-}
 
 /* ─────────────────── метод ─────────────────── */
 
