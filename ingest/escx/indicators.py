@@ -11,6 +11,20 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 MAD_K = 1.4826            # приводит MAD к масштабу стандартного отклонения
+
+# Предел z-оценки. Робастный z в 174 не означает конец света — он означает, что
+# опорная величина выродилась: при короткой истории MAD уходит в 0.00004, и любое
+# ненулевое значение делится почти на ноль. Именно так Россия — Украина оказалась
+# ровно на 100 при фазе 5 из 7. Обрезка ловит вырождение и не даёт одной паре
+# с бедной историей упереть шкалу в потолок.
+Z_CAP = 8.0
+
+# Потолок ОТНОСИТЕЛЬНОГО накала. Верхние пять пунктов шкалы зарезервированы за
+# абсолютным пределом — применением ядерного оружия (фаза 7). Смысл резерва в
+# запасе хода: пара, у которой уже идёт война, обязана иметь куда расти, иначе
+# ухудшение конфликта не отражается в числе вовсе. До правки Россия — Украина
+# стояла на 100 и не могла сдвинуться ни при каком развитии событий.
+HEAT_MAX = 95.0
 WINSOR = (0.01, 0.99)
 
 
@@ -42,8 +56,10 @@ def robust_z(x: float, history: list[float]) -> float:
     mad = st.median([abs(v - med) for v in h])
     if mad == 0:
         sd = st.pstdev(h)
-        return 0.0 if sd == 0 else (x - med) / sd
-    return (x - med) / (MAD_K * mad)
+        z = 0.0 if sd == 0 else (x - med) / sd
+    else:
+        z = (x - med) / (MAD_K * mad)
+    return max(-Z_CAP, min(Z_CAP, z))
 
 
 def rolling_counts(events: list[dict], day: date, window: int = 30) -> dict:
@@ -114,8 +130,9 @@ def heat(block_z: dict[str, float], scale: float = 1.6) -> float:
     подобрано, чтобы одновременное отклонение всех пяти блоков на 3 MAD давало
     ~87, а не упиралось в потолок. Уточняется вместе с весами блоков в v0.2.
     """
-    s = sum(BLOCK_WEIGHTS[k] * v for k, v in block_z.items() if k in BLOCK_WEIGHTS)
-    return 100.0 / (1.0 + math.exp(-s / scale))
+    s = sum(BLOCK_WEIGHTS[k] * max(-Z_CAP, min(Z_CAP, v))
+            for k, v in block_z.items() if k in BLOCK_WEIGHTS)
+    return min(HEAT_MAX, 100.0 / (1.0 + math.exp(-s / scale)))
 
 
 def data_coverage(indicators: dict[str, object]) -> float:

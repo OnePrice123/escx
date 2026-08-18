@@ -30,7 +30,8 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
 from . import sanctions
-from .indicators import BLOCK_WEIGHTS, MAD_K, heat, robust_z, tempo, winsorize
+from .indicators import (BLOCK_WEIGHTS, MAD_K, Z_CAP, heat, robust_z, tempo,
+                         winsorize)
 
 METHOD_VERSION = "0.3.1"
 
@@ -80,9 +81,16 @@ ALL_BLOCKS = list(BLOCK_WEIGHTS)
 
 UCDP_SOURCES = ("ucdp_ged", "ucdp_candidate")
 
+# Лестница фаз. Седьмая ступень — абсолютный предел шкалы, и она НЕ выставляется
+# автоматически ни по каким данным: источника, который подтверждает применение
+# ядерного оружия, в пайплайне нет и быть не может. Она существует, чтобы у
+# шкалы был named потолок и запас хода: пока «Расширенная война» была последней,
+# идущая война упиралась в край, и дальнейшее ухудшение конфликта не отражалось
+# в числе вообще. Сто на шкале означает не «очень плохо», а ровно одно событие.
 PHASES = {0: "Нормализация", 1: "Напряжённость", 2: "Кризис",
           3: "Вооружённые инциденты", 4: "Ограниченный конфликт",
-          5: "Война", 6: "Расширенная война"}
+          5: "Война", 6: "Расширенная война",
+          7: "Применение ядерного оружия"}
 
 # CAMEO-корни для фаз 1–2. Взяты из кодбука: 15 — демонстрация силы,
 # 16 — разрыв отношений и санкции, 11–13 — осуждение, отказ, угроза.
@@ -116,7 +124,11 @@ def _ref(values: list[float]) -> tuple[float, float]:
 
 def _z(x: float, ref: tuple[float, float]) -> float:
     med, mad = ref
-    return 0.0 if not mad else (x - med) / (MAD_K * mad)
+    if not mad:
+        return 0.0
+    # Обрезка та же, что в robust_z: вырожденная опора не должна превращаться
+    # в z-оценку в сотни единиц и упирать накал в потолок.
+    return max(-Z_CAP, min(Z_CAP, (x - med) / (MAD_K * mad)))
 
 
 # --------------------------------------------------------------------------
