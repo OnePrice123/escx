@@ -46,7 +46,25 @@ INDICATORS = {
     "kin_geo":        "kinetic",
     "inf_pressure":   "informational",
     "inf_share":      "informational",
+    "inf_violence":   "informational",
 }
+
+# Корни CAMEO, означающие применение силы: 18 — нападение, 19 — бой,
+# 20 — неконвенциональное массовое насилие. Кодбук GDELT, раздел QuadClass 4.
+CAMEO_VIOLENCE = {"18", "19", "20"}
+
+# Минимальный размер выборки для доли силовых событий.
+#
+# Поймано на живых данных: у пары Египет — Эфиопия за окно набралось ШЕСТЬ
+# событий, пять из них с кодом 190. Доля 83 % вынесла спор о плотине на первое
+# место по накалу — выше России и Украины, где событий в окне 1960. Пропорция,
+# посчитанная по шести наблюдениям, не значит ничего: её доверительный интервал
+# шире самой шкалы.
+#
+# 30 — не подобранное число, а порог, ниже которого доля перестаёт отличаться
+# от шума на глаз. Ниже него индикатор отдаёт None: «не измерено» честнее
+# уверенной цифры из шести строк GDELT, половина которых — ошибки кодирования.
+VIOLENCE_MIN_EVENTS = 30
 # Все пять блоков методологии. Отсутствующие остаются пустыми — и видны в coverage.
 ALL_BLOCKS = list(BLOCK_WEIGHTS)
 
@@ -104,6 +122,7 @@ def bucket(events: list[dict]) -> dict[date, dict]:
     out: dict[date, dict] = defaultdict(
         lambda: {"kin_n": 0, "kin_fat": 0, "cells": set(),
                  "g_num": 0.0, "g_den": 0.0, "mentions": 0.0,
+                 "med_n": 0, "med_viol": 0,
                  "cameo": defaultdict(int)})
     for e in events:
         d = _d(e["occurred_at"])
@@ -126,6 +145,12 @@ def bucket(events: list[dict]) -> dict[date, dict]:
             root = (e["event_type"] or "").replace("cameo:", "")[:2]
             if root:
                 b["cameo"][root] += 1
+            # Доля насилия считается по СОБЫТИЯМ, а не по упоминаниям: одна
+            # перестрелка, которую процитировали двести раз, не есть двести
+            # перестрелок. Упоминания уже учтены в inf_share, где они и уместны.
+            b["med_n"] += 1
+            if root in CAMEO_VIOLENCE:
+                b["med_viol"] += 1
     return out
 
 
@@ -154,6 +179,7 @@ def raw_values(buckets: dict[date, dict], day: date,
             cells |= b["cells"]
 
     g_num = g_den = mentions = 0.0
+    med_n = med_viol = 0
     glob = 0.0
     for i in range(WIN_INF):
         d = day - timedelta(days=i)
@@ -162,6 +188,8 @@ def raw_values(buckets: dict[date, dict], day: date,
             g_num += b["g_num"]
             g_den += b["g_den"]
             mentions += b["mentions"]
+            med_n += b["med_n"]
+            med_viol += b["med_viol"]
         glob += global_mentions.get(d, 0.0)
 
     # Голдштейн: −10 (нападение) .. +10 (уступка). Переворачиваем знак, чтобы
@@ -170,12 +198,23 @@ def raw_values(buckets: dict[date, dict], day: date,
     pressure = -(g_num / g_den) if g_den else None
     share = (mentions / glob) if glob else None
 
+    # Доля силовых событий в медиапотоке пары. Это ПРОКСИ кинетики, а не её
+    # замена: UCDP считает подтверждённые боевые смерти, GDELT — сообщения.
+    # Поэтому индикатор живёт в блоке «инфополе» рядом с тоном и объёмом, а не
+    # в кинетическом: сложить их в один блок значило бы выдать медиапоток за
+    # измерение и удвоить один и тот же сигнал.
+    #
+    # Ноль событий вообще и ноль СИЛОВЫХ событий — разные вещи: первое None
+    # (не измерено), второе 0.0 (измеренная тишина).
+    violence = (med_viol / med_n) if med_n >= VIOLENCE_MIN_EVENTS else None
+
     out = {
         "kin_events": float(kin_n),
         "kin_fatalities": float(kin_fat),
         "kin_geo": float(len(cells)),
         "inf_pressure": pressure,
         "inf_share": share,
+        "inf_violence": violence,
     }
     for key, block in INDICATORS.items():
         span = (covered or {}).get(block)

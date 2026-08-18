@@ -55,6 +55,32 @@ check("доля считается от мирового объёма", abs(v3["
 check("без мирового объёма доля не выдумывается",
       comp.raw_values(b3, TODAY, {}, COV)["inf_share"] is None)
 
+# Прокси кинетики из CAMEO. Главное здесь — что он НЕ становится счётчиком
+# медиавнимания: доля силовых событий не должна расти от того, что одно и то же
+# событие процитировали больше раз.
+big = ([ev(TODAY, source="gdelt_export", gold=-8.0, mentions=10, root="19")] * 20
+       + [ev(TODAY, source="gdelt_export", gold=+2.0, mentions=1, root="04")] * 20)
+vbig = comp.raw_values(comp.bucket(big), TODAY, {TODAY: 1e6}, COV)
+check("доля силовых событий: двадцать из сорока",
+      abs(vbig["inf_violence"] - 0.5) < 1e-9, vbig["inf_violence"])
+check("на малой выборке доля не выдаётся за измерение",
+      v3["inf_violence"] is None, v3["inf_violence"])
+b3x = comp.bucket([ev(TODAY, source="gdelt_export", gold=-8.0, mentions=10000, root="19"),
+                   ev(TODAY, source="gdelt_export", gold=+2.0, mentions=1, root="04")])
+bigx = ([ev(TODAY, source="gdelt_export", gold=-8.0, mentions=10000, root="19")] * 20
+        + [ev(TODAY, source="gdelt_export", gold=+2.0, mentions=1, root="04")] * 20)
+check("цитируемость не раздувает долю насилия",
+      comp.raw_values(comp.bucket(bigx), TODAY, {TODAY: 1e6}, COV)["inf_violence"]
+      == vbig["inf_violence"])
+b3y = comp.bucket([ev(TODAY, source="gdelt_export", gold=+2.0, mentions=5, root="04")] * 40)
+check("ноль силовых событий — это 0.0, а не «нет данных»",
+      comp.raw_values(b3y, TODAY, {TODAY: 1000.0}, COV)["inf_violence"] == 0.0)
+b3z = comp.bucket([ev(TODAY, fat=1)])          # только UCDP, медиапотока нет
+check("отсутствие медиапотока — None, а не ноль",
+      comp.raw_values(b3z, TODAY, {TODAY: 1000.0}, COV)["inf_violence"] is None)
+check("прокси живёт в инфоблоке, а не в кинетическом",
+      comp.INDICATORS["inf_violence"] == "informational")
+
 print("\n3. Пороги фаз — числа UCDP, не наши")
 check("1000 смертей -> война", comp.phase_rule(1000, 50, {})[0] == 5)
 check("999 смертей -> ограниченный конфликт", comp.phase_rule(999, 50, {})[0] == 4)
