@@ -902,31 +902,35 @@ function paintMovers() {
 
 function buildViewPicker() {
   const box = $('#views');
-  box.innerHTML = VIEWS.map(v => {
+  // Список отсортирован по накалу: сверху то, что сейчас горячее. Число в
+  // подписи обязательно — без него это просто перечень стран, по которому
+  // невозможно решить, что смотреть.
+  const opts = VIEWS.map(v => {
     const o = v.type === 'theatre' ? THEATRES[v.id] : CONFLICTS[v.id];
+    if (!o) return null;
     const on = v.type === VIEW.type && v.id === VIEW.id;
-    // Кнопка не раскрашивается, а теплеет по накалу: заливка фона вместо
-    // цветной метки. Цветная метка утверждала бы «плохо / хорошо», которого
-    // в накале нет, — а тепло читается как величина, и это честнее.
-    const heat = o && Number.isFinite(o.now) ? o.now : null;
-    const stale = o && Number.isFinite(o.coverage) && o.coverage < 40;
-    // Заливку НЕ гасим по покрытию: сейчас под порогом все диады, и лента
-    // выцвела бы целиком — приглушение перестало бы что-либо различать.
-    // Низкое покрытие показываем пунктирной рамкой, она работает и без цвета.
-    const wash = heat === null ? '' : `style="--wash:${heatWash(heat)}"`;
-    return `<button type="button" class="viewbtn${on ? ' is-on' : ''}${v.nested ? ' is-nested' : ''}${stale ? ' is-thin' : ''}"
-      data-type="${v.type}" data-id="${v.id}" ${wash}
-      ${stale ? `title="покрытие данных ${o.coverage}%"` : ''}>${loc(o, 'short')}</button>`;
-  }).join('');
+    const heat = Number.isFinite(o.now) ? ` · ${fmt(o.now, 0)}` : '';
+    return `<option value="${v.type}:${v.id}"${on ? ' selected' : ''}>${loc(o, 'short')}${heat}</option>`;
+  }).filter(Boolean);
+  box.innerHTML = opts.join('');
 
-  $$('.viewbtn', box).forEach(b => b.addEventListener('click', () => {
-    VIEW = { type: b.dataset.type, id: b.dataset.id };
-    localStorage.setItem('px.view', VIEW.type + ':' + VIEW.id);
+  box.onchange = () => {
+    const [type, id] = box.value.split(':');
+    VIEW = { type, id };
+    localStorage.setItem('px.view', box.value);
     renderAll();
-  }));
-}
+  };
 
-/* ── язык и тема ───────────────────────── */
+  // Текущее значение рядом с выбором: оно же красится по накалу, поэтому
+  // строка сама по себе показывает, горячо тут или нет.
+  const c = cur();
+  const now = $('#viewNow');
+  if (now) {
+    const v = c && Number.isFinite(c.now) ? c.now : null;
+    now.textContent = v === null ? '' : fmt(v, 0);
+    now.style.color = v === null ? '' : zoneColor(v);
+  }
+}
 
 function applyLang() {
   const d = document.documentElement;

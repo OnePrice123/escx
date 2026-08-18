@@ -114,6 +114,7 @@ const I18N = {
     apiCta: 'Запросить доступ',
     embedCta: 'Виджет для сайта',
 
+    viewsAll: 'все пары ↓',
     viewsLabel: 'Что смотрим',
     theatreTag: 'театр',
     dyadTag: 'диада',
@@ -282,6 +283,7 @@ const I18N = {
     apiCta: 'Request access',
     embedCta: 'Widget for your site',
 
+    viewsAll: 'all pairs ↓',
     viewsLabel: 'Now viewing',
     theatreTag: 'theatre',
     dyadTag: 'dyad',
@@ -450,6 +452,7 @@ const I18N = {
     apiCta: 'Запросити доступ',
     embedCta: 'Віджет для сайту',
 
+    viewsAll: 'усі пари ↓',
     viewsLabel: 'Що дивимося',
     theatreTag: 'театр',
     dyadTag: 'діада',

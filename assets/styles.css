@@ -320,7 +320,38 @@ body {
   font: 600 10px/1 var(--sans); letter-spacing: .18em; text-transform: uppercase;
   color: var(--ink-3); white-space: nowrap;
 }
-.views { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Выбор пары одной строкой. Двадцать кнопок здесь занимали на телефоне весь
+   экран и ничего не сообщали: список названий без чисел не помогает выбрать.
+   Просмотр по-прежнему есть — в разделе «Где горячее всего», где видно
+   и накал, и динамику, и фазу. */
+.viewpick { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.viewpick select {
+  appearance: none;
+  max-width: min(62vw, 320px);
+  border: 1px solid var(--hair); background: var(--paper-raised); color: var(--ink);
+  border-radius: 2px; padding: 6px 26px 6px 10px;
+  font: 500 13px/1.2 var(--sans); cursor: pointer;
+  text-overflow: ellipsis;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+                    linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.viewpick select:hover { border-color: var(--ink-3); }
+.viewpick__now { font: 500 17px/1 var(--mono); font-variant-numeric: tabular-nums; }
+
+.viewbar__all {
+  margin-inline-start: auto;
+  font: 500 12px/1 var(--sans); color: var(--ink-3); text-decoration: none;
+  border-bottom: 1px solid var(--hair); padding-bottom: 2px;
+}
+.viewbar__all:hover { color: var(--ink); border-color: var(--ink-3); }
+
+@media (max-width: 620px) {
+  .viewbar__label { display: none; }          /* подпись съедает строку целиком */
+  .viewpick select { max-width: 58vw; }
+}
 
 .viewbtn {
   appearance: none; cursor: pointer;
@@ -1036,4 +1067,62 @@ body {
   .row { grid-template-columns: 1fr auto; }
   .row__date { grid-column: 1 / -1; }
   .steps { grid-template-columns: 1fr; }
+
+  /* ── телефон ──────────────────────────────────────────────────────
+     Правило простое: на экране 375 точек первым делом видно число и
+     состояние, а не оформление. Всё, что не помогает это прочитать,
+     ужимается или уходит. */
+
+  /* Шапка. Подтоны и тема — четыре кнопки по краю, в узкой строке они
+     оттесняют выбор языка на вторую строку и ломают её. */
+  .topbar__in { gap: 10px; padding-block: 8px; }
+  .tints { gap: 4px; }
+  .tint { width: 13px; height: 13px; }
+  .langpick select { max-width: 104px; }
+
+  /* Заголовки. clamp снизу оставлял 30px — на узком экране это три слова
+     в строку и заголовок в пять строк. */
+  .world__title { font-size: 26px; }
+  .h2 { font-size: 21px; }
+  .lede, .lede--wide { font-size: 15px; }
+
+  /* Дуга. Карточка с полями в 54px съедала треть ширины. */
+  .dialcard { padding: 16px 12px 14px; }
+  .dial__value { font-size: 44px; }
+  .dial__hint { font-size: 11px; }
+
+  /* Лента. Спарклайн на 375 точках нечитаем, а место занимает —
+     остаются название, фаза, число и изменение. */
+  .toprow { grid-template-columns: minmax(0, 1fr) 52px 84px; gap: 10px; padding: 11px 10px; }
+  .toprow__spark { display: none; }
+  .toprow__title { font-size: 14px; }
+  .toprow__meta { font-size: 10.5px; }
+  .toprow__num { font-size: 20px; }
+  .toprow__d { font-size: 11px; }
+  .toprow__d small { display: none; }        /* темп словом не влезает */
+
+  /* Карточки «кто сдвинулся» — в строку, а не в столбик на всю ширину. */
+  .movers { width: 100%; gap: 8px; }
+  .mover { min-width: 0; flex: 1; padding: 10px; }
+  .mover__name { font-size: 12px; }
+  .mover__d { font-size: 15px; }
+
+  /* Оси и масштабы. */
+  .meters--world { gap: 16px; padding-top: 16px; }
+  .scales { gap: 6px; }
+  .scalebtn { padding: 5px 10px; font-size: 11.5px; }
+  .scales__note { flex-basis: 100%; margin-inline-start: 0; }
+
+  /* Отступы разделов: на телефоне 84px сверху — это пустой экран. */
+  .world { padding-block: 26px 20px; }
+  .top { padding-block: 22px 28px; }
+  .hero { padding-block: 24px 22px; }
+}
+
+/* Совсем узкие экраны (SE и подобные): график перестаёт быть графиком
+   при ширине меньше 340 точек, поэтому уходит вместе с масштабами. */
+@media (max-width: 380px) {
+  .toprow { grid-template-columns: minmax(0, 1fr) 46px 70px; }
+  .dial__value { font-size: 38px; }
+  .movers { flex-direction: column; }
 }
