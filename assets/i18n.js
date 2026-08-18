@@ -82,6 +82,10 @@ const I18N = {
     f5: 'Ужесточение формулировок в заявлениях официальных представителей с обеих сторон',
     f6: 'Возобновлена работа технической группы по судоходству',
 
+    scaleDay: 'День',
+    scaleWeek: 'Неделя',
+    scaleMonth: 'Месяц',
+    scaleNote: 'часового шага нет: индекс суточный',
     historyTitle: 'Полная история',
     historySub: 'Помесячно с февраля 2022 года. Отмечены события-якоря, по которым калибровалась модель.',
     syntheticBand: 'Участок без верифицированных данных (заглушка прототипа)',
@@ -246,6 +250,10 @@ const I18N = {
     f5: 'Harder wording in official statements from both sides',
     f6: 'Technical working group on shipping resumed',
 
+    scaleDay: 'Day',
+    scaleWeek: 'Week',
+    scaleMonth: 'Month',
+    scaleNote: 'no hourly step: the index is daily',
     historyTitle: 'Full history',
     historySub: 'Monthly since February 2022. Anchor events used to calibrate the model are marked.',
     syntheticBand: 'No verified data for this stretch (prototype placeholder)',
@@ -410,6 +418,10 @@ const I18N = {
     f5: 'Жорсткіші формулювання в заявах офіційних представників з обох боків',
     f6: 'Відновлено роботу технічної групи із судноплавства',
 
+    scaleDay: 'День',
+    scaleWeek: 'Тиждень',
+    scaleMonth: 'Місяць',
+    scaleNote: 'погодинного кроку немає: індекс добовий',
     historyTitle: 'Повна історія',
     historySub: 'Помісячно з лютого 2022 року. Позначено події-якорі, за якими калібрувалася модель.',
     syntheticBand: 'Ділянка без верифікованих даних (заглушка прототипу)',

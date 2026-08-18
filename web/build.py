@@ -43,6 +43,26 @@ TEMPO  = {"spike": "Резкая эскалация", "up": "Нагрев", "fla
 # --------------------------------------------------------------------------
 # Данные
 # --------------------------------------------------------------------------
+def _bucket(values: list[int], size: int) -> list[int]:
+    """Среднее по корзинам размера size, считая от КОНЦА ряда.
+
+    От конца, а не от начала: последняя корзина обязана заканчиваться сегодня,
+    иначе на графике последняя точка окажется неполной неделей и будет
+    выглядеть провалом там, где его нет.
+    """
+    if not values:
+        return []
+    out = []
+    n = len(values)
+    start = n % size
+    if start:
+        out.append(round(sum(values[:start]) / start))
+    for i in range(start, n, size):
+        chunk = values[i:i + size]
+        out.append(round(sum(chunk) / len(chunk)))
+    return out
+
+
 def from_db(path: Path) -> dict | None:
     """Читает витрину. Возвращает None, если базы или расчётов ещё нет.
 
@@ -69,9 +89,11 @@ def from_db(path: Path) -> dict | None:
             return None
 
         series: dict[str, list[int]] = {}
-        for r in con.execute("SELECT dyad_id, day, h_abs FROM heat_daily "
+        coverage: dict[str, list[int]] = {}
+        for r in con.execute("SELECT dyad_id, day, h_abs, data_coverage FROM heat_daily "
                              "ORDER BY dyad_id, day"):
             series.setdefault(r["dyad_id"], []).append(round(r["h_abs"] or 0))
+            coverage.setdefault(r["dyad_id"], []).append(round(r["data_coverage"] or 0))
 
         # Доли для весов последствий: последний известный срез по каждой стране.
         shares: dict[str, dict[str, float]] = {"pop": {}, "gdp": {}, "mil": {}}
@@ -98,7 +120,24 @@ def from_db(path: Path) -> dict | None:
         d["name"] = d.get("name") or f'{d["side_a"]} — {d["side_b"]}'
         for k in ("h_abs", "h_rel", "delta_7", "delta_30", "data_coverage"):
             d[k] = None if d.get(k) is None else round(d[k])
-        d["series_90d"] = series.get(d["dyad_id"], [])[-90:]
+        full = series.get(d["dyad_id"], [])
+        cov = coverage.get(d["dyad_id"], [])
+        d["series_90d"] = full[-90:]                      # прежнее поле, не ломаем
+        # Масштабы времени, как на биржевом графике. Часового нет и быть не
+        # может: индекс суточный — окна усреднения 7 и 30 дней, а события UCDP
+        # датированы днём. Часовой ряд был бы интерполяцией, то есть выдумкой.
+        d["series"] = {
+            "day":   full[-90:],
+            "week":  _bucket(full, 7)[-104:],             # два года по неделям
+            "month": _bucket(full, 30)[-36:],             # три года по месяцам
+        }
+        # Покрытие по тем же корзинам: длинный график склеивает периоды с
+        # разным составом блоков, и не показать этого — значит соврать.
+        d["coverage"] = {
+            "day":   cov[-90:],
+            "week":  _bucket(cov, 7)[-104:],
+            "month": _bucket(cov, 30)[-36:],
+        }
         d["events_30d"] = None if d.get("events_30d") is None else int(d["events_30d"])
         d["weight"] = wt.consequence(d["side_a"], d["side_b"], shares)
         dyads.append(d)

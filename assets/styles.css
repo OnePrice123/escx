@@ -421,6 +421,20 @@ body {
 .mover[data-dir="up"]   .mover__d { color: var(--t4); }
 .mover[data-dir="down"] .mover__d { color: var(--t0); }
 
+/* Масштаб времени: те же таблетки, что у видов, — это тот же жест выбора. */
+.scales { display: flex; align-items: center; gap: 8px; margin: 18px 0 4px; flex-wrap: wrap; }
+.scalebtn {
+  appearance: none; cursor: pointer;
+  border: 1px solid var(--hair); background: transparent; color: var(--ink-2);
+  border-radius: 2px; padding: 5px 12px;
+  font: 500 12px/1.2 var(--sans);
+  transition: border-color .18s, color .18s, background .18s;
+}
+.scalebtn:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-3); }
+.scalebtn.is-on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.scalebtn:disabled { opacity: .4; cursor: default; }
+.scales__note { font-size: 11.5px; color: var(--ink-3); margin-inline-start: 6px; }
+
 .toplist { list-style: none; margin: 26px 0 0; padding: 0; }
 .toprow {
   display: grid;

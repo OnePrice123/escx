@@ -504,6 +504,22 @@ function pointDate(conf, i) {
   return new Date(y, m - 1 + add, 1);
 }
 
+/* Выбранный масштаб времени. Хранится между сессиями: человек, смотрящий
+   помесячно, при возврате ждёт помесячный график, а не суточный. */
+let SCALE = localStorage.getItem('px.scale') || 'day';
+
+const SCALE_DAYS = { day: 1, week: 7, month: 30 };
+
+function scaledSeries(c) {
+  const s = c.scales && c.scales[SCALE];
+  return (s && s.length > 1) ? s : (c.series || []);
+}
+
+function scaledCoverage(c) {
+  const v = c.scaleCoverage && c.scaleCoverage[SCALE];
+  return (v && v.length) ? v : [];
+}
+
 function chartSeries() {
   const c = cur();
   return isTheatre() ? c.dyads.map(id => CONFLICTS[id]) : [c];
@@ -516,8 +532,8 @@ function drawChart() {
 
   const list = chartSeries();
   const ref = list[0];
-  const n = Math.max(...list.map(c => c.series.length));
-  const peak = Math.max(...list.flatMap(c => c.series));
+  const n = Math.max(...list.map(c => scaledSeries(c).length));
+  const peak = Math.max(...list.flatMap(c => scaledSeries(c)));
   const yMax = Math.max(45, Math.ceil((peak + 5) / 10) * 10);
 
   const X = i => PAD.l + (PW * i) / (n - 1);
@@ -565,7 +581,8 @@ function drawChart() {
   // Акварель вместо чертежа: работает мягкая заливка, линия почти невидима.
   // Заливка окрашена по текущему накалу, а не латунью: график и дуга должны
   // говорить одним цветом, иначе на странице два разных прибора.
-  const tail = list[0].series[list[0].series.length - 1];
+  const tailSer = scaledSeries(list[0]);
+  const tail = tailSer[tailSer.length - 1];
   const washCol = heatColor(tail);
 
   const grad = el('linearGradient', { id: 'areaFill', x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
@@ -573,10 +590,11 @@ function drawChart() {
   el('stop', { offset: '100%', 'stop-color': washCol, 'stop-opacity': 0 }, grad);
 
   list.forEach((c, k) => {
-    const pts = c.series.map((v, i) => `${X(i).toFixed(2)},${Y(v).toFixed(2)}`);
+    const ser = scaledSeries(c);
+    const pts = ser.map((v, i) => `${X(i).toFixed(2)},${Y(v).toFixed(2)}`);
     if (list.length === 1) {
       el('path', {
-        d: `M ${PAD.l},${PAD.t + PH} L ${pts.join(' L ')} L ${X(c.series.length - 1)},${PAD.t + PH} Z`,
+        d: `M ${PAD.l},${PAD.t + PH} L ${pts.join(' L ')} L ${X(ser.length - 1)},${PAD.t + PH} Z`,
         fill: 'url(#areaFill)',
       }, area);
     }
@@ -591,10 +609,8 @@ function drawChart() {
 
   // Уголёк на конце ряда — та же метка, что на дуге и в знаке.
   if (list.length === 1) {
-    const c0 = list[0], last = c0.series.length - 1;
-    el('circle', {
-      cx: X(last), cy: Y(c0.series[last]), r: 4, fill: washCol,
-    }, line);
+    const s0 = scaledSeries(list[0]), last = s0.length - 1;
+    el('circle', { cx: X(last), cy: Y(s0[last]), r: 4, fill: washCol }, line);
   }
 
   // события-якоря
@@ -975,12 +991,29 @@ function renderAll() {
     split.classList.toggle('split--single', HAS.ledger !== HAS.axes);
   }
 
+  // Кнопка выбранного масштаба подсвечивается, а недоступный масштаб гасится:
+  // у пары без длинной истории месячный график был бы одной точкой.
+  $$('.scalebtn').forEach(b => {
+    const c = cur();
+    const has = c && c.scales && (c.scales[b.dataset.scale] || []).length > 1;
+    b.disabled = !has;
+    b.classList.toggle('is-on', b.dataset.scale === SCALE);
+  });
+
   // Пункт меню, ведущий на скрытый раздел, — это ссылка в никуда.
   $$('.topnav a[href^="#"]').forEach(a => {
     const target = $(a.getAttribute('href'));
     a.hidden = !target || target.hidden;
   });
 }
+
+/* Переключатель масштаба. Перерисовываем целиком: цвета в SVG заданы
+   атрибутами, а не классами, поэтому частичное обновление их не подхватит. */
+$$('.scalebtn').forEach(b => b.addEventListener('click', () => {
+  SCALE = b.dataset.scale;
+  localStorage.setItem('px.scale', SCALE);
+  renderAll();
+}));
 
 $('#topMore').addEventListener('click', () => {
   topExpanded = !topExpanded;
