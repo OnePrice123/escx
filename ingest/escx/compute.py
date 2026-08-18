@@ -49,7 +49,15 @@ INDICATORS = {
     "inf_share":      "informational",
     "inf_violence":   "informational",
     "eco_sanctions":  "economic",
+    "dip_distance":   "diplomatic",
 }
+
+# Сколько лет годен годовой замер дипломатии. Сессия ГА ООН проходит раз в год,
+# файл выходит с задержкой, поэтому «позапрошлый год» — нормальный свежий срок.
+# Дальше — нет: у пары Китай — Тайвань последний общий замер стоит 1971 годом,
+# когда Тайвань потерял место в ООН, и показывать его как текущую дипломатию
+# значило бы соврать на полвека.
+UNVOTES_MAX_AGE_Y = 2
 
 # Корни CAMEO, означающие применение силы: 18 — нападение, 19 — бой,
 # 20 — неконвенциональное массовое насилие. Кодбук GDELT, раздел QuadClass 4.
@@ -163,7 +171,8 @@ def bucket(events: list[dict]) -> dict[date, dict]:
 
 def raw_values(buckets: dict[date, dict], day: date,
                global_mentions: dict[date, float],
-               covered: dict[str, tuple[date, date] | None] | None = None
+               covered: dict[str, tuple[date, date] | None] | None = None,
+               unvotes: tuple[int, float] | None = None
                ) -> dict[str, float | None]:
     """Значения индикаторов на день. None = данных нет, а не ноль.
 
@@ -228,6 +237,10 @@ def raw_values(buckets: dict[date, dict], day: date,
         # «список смотрели, ничего не менялось», и это измеренная тишина, а не
         # отсутствие данных. Отсутствие данных задаётся ниже, через covered.
         "eco_sanctions": float(sanc),
+        # Годовой замер, а не суточный: внутри года значение постоянно. Своей
+        # динамики он не даёт и не должен — он различает ПАРЫ между собой.
+        "dip_distance": (unvotes[1] if unvotes
+                         and day.year - unvotes[0] <= UNVOTES_MAX_AGE_Y else None),
     }
     for key, block in INDICATORS.items():
         span = (covered or {}).get(block)
@@ -332,7 +345,20 @@ def compute(con, *, days: int = SERIES_DAYS, today: date | None = None) -> dict:
         a, b = _d(r["a"]), _d(r["b"])
         covered[block] = (a, b) if a and b else None
 
+    # Дипломатия приходит не событиями, а годовым замером, поэтому её период
+    # не выводится из raw_events. Границу годности проверяет сам индикатор
+    # (UNVOTES_MAX_AGE_Y), здесь окно открыто целиком.
+    covered["diplomatic"] = (date(1946, 1, 1), today)
+
     sanc_channel = sanctions.dyads_with_channel()
+
+    # Годовой замер дипломатии: {dyad_id: (год, расстояние)}. Берём последний год.
+    unvotes: dict[str, tuple[int, float]] = {}
+    for r in con.execute("SELECT series_key, as_of, value FROM series WHERE source='unvotes'"):
+        y = int(str(r["as_of"])[:4])
+        cur = unvotes.get(r["series_key"])
+        if not cur or y > cur[0]:
+            unvotes[r["series_key"]] = (y, float(r["value"]))
 
     buckets: dict[str, dict[date, dict]] = {}
     first_day = today
@@ -365,7 +391,11 @@ def compute(con, *, days: int = SERIES_DAYS, today: date | None = None) -> dict:
         cov_d = dict(covered)
         if d["dyad_id"] not in sanc_channel:
             cov_d["economic"] = None
-        raw[d["dyad_id"]] = {day: raw_values(b, day, global_mentions, cov_d)
+        # Дипломатия тоже подиадная и по той же причине: у пары без замера
+        # (Косово не член ООН) или с протухшим замером блок остаётся пустым.
+        uv = unvotes.get(d["dyad_id"])
+        cov_d["diplomatic"] = covered.get("diplomatic") if uv else None
+        raw[d["dyad_id"]] = {day: raw_values(b, day, global_mentions, cov_d, uv)
                              for day in all_days}
 
     # 3. Опорные величины. Хвост в REF_LAG дней отрезан: иначе сегодняшний

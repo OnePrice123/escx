@@ -86,6 +86,45 @@ def parse_ofac_sdn_rows(blob: bytes) -> list[dict]:
 # (Harvard Dataverse, ежегодное обновление); первичный источник — UN Digital Library.
 # --------------------------------------------------------------------------
 UN_VOTES_DATAVERSE = "https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/LEJUQZ"
+# Готовый файл по ПАРАМ: ccode/iso3 обеих сторон, год и расстояние между их
+# внешнеполитическими позициями. Считать согласие из сырых голосований не надо —
+# Вутен уже посчитал, причём методом, на который ссылаются в литературе.
+UN_DYADS_FILE = "https://dataverse.harvard.edu/api/access/datafile/13642051"
+
+
+def parse_un_dyads(blob: bytes, want: set[frozenset]) -> dict[frozenset, tuple[int, float]]:
+    """Расстояние позиций для нужных пар: {frozenset(ISO3, ISO3): (год, значение)}.
+
+    Берётся ПОСЛЕДНИЙ доступный год каждой пары. Файл содержит всю историю с
+    1946 года и весит 70 МБ, поэтому фильтрация идёт построчно, без загрузки
+    целиком в память.
+
+    AbsIdealDiff — модуль разницы идеальных точек: больше значит дальше друг от
+    друга. Полярность совпадает с остальными индикаторами («больше — хуже»),
+    переворачивать ничего не нужно.
+    """
+    out: dict[frozenset, tuple[int, float]] = {}
+    head = None
+    for line in io.StringIO(blob.decode("utf-8", "replace")):
+        cells = line.rstrip("\n").split("\t")
+        if head is None:
+            head = {name: i for i, name in enumerate(cells)}
+            continue
+        if len(cells) < len(head):
+            continue
+        try:
+            a3 = cells[head["iso3c1"]].strip('"')
+            b3 = cells[head["iso3c2"]].strip('"')
+            key = frozenset((a3, b3))
+            if key not in want:
+                continue
+            year = int(cells[head["year"]])
+            val = float(cells[head["AbsIdealDiff"]])
+        except (KeyError, ValueError):
+            continue
+        if key not in out or year > out[key][0]:
+            out[key] = (year, val)
+    return out
 UN_DIGITAL_LIBRARY = "https://digitallibrary.un.org/collection/Voting%20Data"
 
 

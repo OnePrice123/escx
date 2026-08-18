@@ -224,6 +224,20 @@ def set_sanctions_state(con, dyad_id: str, ent_nums: set[str], day: str) -> None
     con.commit()
 
 
+def set_series(con, source: str, key: str, as_of: str, value: float) -> None:
+    """Перезапись значения ряда, в отличие от накопительной add_series.
+
+    Нужна для источников, которые отдают ИТОГ за период, а не приращение:
+    расстояние позиций в ООН за 2025 год — это одно число, и повторный прогон
+    обязан его заменить, а не удвоить.
+    """
+    con.execute(
+        "INSERT INTO series(source,series_key,as_of,value) VALUES(?,?,?,?) "
+        "ON CONFLICT(source,series_key,as_of) DO UPDATE SET value=excluded.value",
+        (source, key, as_of, value))
+    con.commit()
+
+
 def get_watermark(con, source: str, default: str = "") -> str:
     r = con.execute("SELECT position FROM watermarks WHERE source=?", (source,)).fetchone()
     return r["position"] if r else default

@@ -201,6 +201,44 @@ def _sanction_event(dyad_id: str, ent_num: str, day: str, sign: int) -> dict:
     }
 
 
+def cmd_pull_unvotes(args):
+    """Расстояние внешнеполитических позиций по голосованиям Генассамблеи ООН.
+
+    Единственный источник в пайплайне, который меряет ДИПЛОМАТИЮ, а не её
+    отражение в прессе. Такт годовой — сессия ГА проходит раз в год, — поэтому
+    сигнал медленный и суточной динамики не даёт. Он даёт другое: разницу
+    МЕЖДУ парами, и она немаленькая. Иран и США расходятся на 4.0, Индия и
+    Пакистан — на 0.02: воюют, но в ООН голосуют почти одинаково. Ни один
+    медиапоток такого не скажет.
+
+    Берётся готовый файл по парам (Voeten, Harvard Dataverse), а не сырые
+    голосования: идеальные точки уже посчитаны опубликованным методом, и
+    пересчитывать их самим значило бы заводить вторую методологию.
+    """
+    con = db.connect(args.db)
+    ds = dy.load()
+    want = {frozenset((d["side_a"], d["side_b"])) for d in ds}
+    by_key = {frozenset((d["side_a"], d["side_b"])): d["dyad_id"] for d in ds}
+
+    blob = simple.get(simple.UN_DYADS_FILE, use_cache=True)
+    if not blob or len(blob) < 10_000_000:
+        print(f"файл ООН недоступен или обрезан ({len(blob or b'')} байт) — пропуск")
+        return
+    found = simple.parse_un_dyads(blob, want)
+    print(f"пар в реестре {len(want)}, найдено в ООН {len(found)}")
+
+    for key, (year, val) in sorted(found.items(), key=lambda x: x[1][0]):
+        dyad_id = by_key[key]
+        db.set_series(con, "unvotes", dyad_id, f"{year}-12-31", val)
+        print(f"  {dyad_id:9} {year}  расстояние {val:.3f}")
+
+    missing = sorted(by_key[k] for k in want - set(found))
+    if missing:
+        # Косово не член ООН — его пары в этом источнике не появятся никогда.
+        # Это не сбой, но и молчать нельзя: пара останется без блока.
+        print(f"  нет в источнике: {', '.join(missing)}")
+
+
 def cmd_backfill_gdelt(args):
     """История GDELT из суточных файлов 1.0.
 
@@ -398,6 +436,9 @@ def main(argv=None):
     g = sub.add_parser("pull-gdelt")
     g.add_argument("--slices", type=int, default=4)
     g.set_defaults(fn=cmd_pull_gdelt)
+
+    sub.add_parser("pull-unvotes",
+                   help="расстояние позиций в ООН").set_defaults(fn=cmd_pull_unvotes)
 
     sub.add_parser("pull-sanctions",
                    help="дельта санкционного списка OFAC").set_defaults(fn=cmd_pull_sanctions)

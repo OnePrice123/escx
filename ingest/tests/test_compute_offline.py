@@ -107,6 +107,22 @@ ch = sanc.dyads_with_channel()
 check("канал есть не у всех пар", 0 < len(ch) < 21, len(ch))
 check("пары без канала в таблице отсутствуют", "EGY-ETH" not in ch)
 
+print("\n2b. Дипломатия: годовой замер со сроком годности")
+COV_D = {**COV, "diplomatic": (date(1946, 1, 1), TODAY)}
+empty = comp.bucket([])
+check("свежий замер попадает в индикатор",
+      comp.raw_values(empty, TODAY, {}, COV_D, (TODAY.year, 4.02))["dip_distance"] == 4.02)
+check("замер позапрошлого года ещё годен",
+      comp.raw_values(empty, TODAY, {}, COV_D, (TODAY.year - 2, 0.8))["dip_distance"] == 0.8)
+# Китай — Тайвань: последний общий замер стоит 1971 годом, когда Тайвань
+# потерял место в ООН. Показать его как сегодняшнюю дипломатию — соврать на полвека.
+check("замер полувековой давности отбрасывается",
+      comp.raw_values(empty, TODAY, {}, COV_D, (1971, 1.476))["dip_distance"] is None)
+check("нет замера — нет значения",
+      comp.raw_values(empty, TODAY, {}, COV_D, None)["dip_distance"] is None)
+check("дипломатия — свой блок, а не довесок к инфополю",
+      comp.INDICATORS["dip_distance"] == "diplomatic")
+
 print("\n3. Пороги фаз — числа UCDP, не наши")
 check("1000 смертей -> война", comp.phase_rule(1000, 50, {})[0] == 5)
 check("999 смертей -> ограниченный конфликт", comp.phase_rule(999, 50, {})[0] == 4)
