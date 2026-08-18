@@ -495,6 +495,28 @@ const CW = 1120, CH = 340;
 const PAD = { l: 46, r: 18, t: 18, b: 36 };
 const PW = CW - PAD.l - PAD.r, PH = CH - PAD.t - PAD.b;
 
+/* Дата точки С УЧЁТОМ масштаба. Отсчёт ведётся от КОНЦА ряда: последняя
+   точка — всегда сегодня, а вот начало зависит от того, сколько их. Считать
+   от начала значило бы промахиваться на неполную первую корзину. */
+function pointDateScaled(conf, i, n) {
+  if (SCALE === 'all' && conf.scalesFrom) {
+    const [y, m] = conf.scalesFrom.split('-').map(Number);
+    return new Date(y, m - 1 + i, 1);
+  }
+  const step = SCALE_DAYS[SCALE] || 1;
+  const end = conf.seriesFrom
+    ? new Date(conf.seriesFrom.split('-').map(Number)[0],
+               conf.seriesFrom.split('-').map(Number)[1] - 1,
+               conf.seriesFrom.split('-').map(Number)[2] || 1)
+    : new Date();
+  // seriesFrom — начало СУТОЧНОГО ряда; конец у всех масштабов один и тот же.
+  const last = new Date(end);
+  last.setDate(last.getDate() + 89);
+  const d = new Date(last);
+  d.setDate(d.getDate() - (n - 1 - i) * step);
+  return d;
+}
+
 function pointDate(conf, i) {
   const [y, m, d] = conf.seriesFrom.split('-').map(Number);
   // Витрина отдаёт ежедневный ряд за 90 дней; у прототипа шаг был месячный.
@@ -662,22 +684,41 @@ function drawChart() {
     });
   });
 
-  // ось X: годовые отметки, прореженные под ширину
-  const years = [];
-  for (let i = 0; i < n; i++) {
-    const d = pointDate(ref, i);
-    if (i === 0 || d.getMonth() === 0) years.push([i, d.getFullYear()]);
-  }
-  const stepY = Math.ceil(years.length / 8);
-  years.filter((_, i) => i % stepY === 0).forEach(([i, year]) => {
+  /* Ось X. Раньше она отмечала только границы ЛЕТ, и на дневном масштабе,
+     где весь ряд укладывается в девяносто дней одного года, подпись выходила
+     ровно одна: «2026». Понять по такому графику, где какой месяц, было
+     невозможно.
+
+     Теперь делений всегда семь-восемь, а подпись выбирается по длине
+     показанного периода: недели — числом и месяцем, годы — месяцем и годом,
+     десятилетия — годом. Формат подписи обязан следовать за масштабом,
+     иначе она либо повторяется, либо не помещается. */
+  const spanDays = n * (SCALE_DAYS[SCALE] || 1);
+  const fmtTick = spanDays <= 200
+    ? { day: 'numeric', month: 'short' }
+    : spanDays <= 1500
+      ? { month: 'short', year: '2-digit' }
+      : { year: 'numeric' };
+  const tickFmt = new Intl.DateTimeFormat(I18N[LANG]._locale, fmtTick);
+
+  const want = Math.min(8, n);
+  const stepI = Math.max(1, Math.round((n - 1) / (want - 1)));
+  let prev = '';
+  for (let i = 0; i < n; i += stepI) {
+    const txt = tickFmt.format(pointDateScaled(ref, i, n));
+    // Повтор подписи означает, что шаг мельче её разрешения: на десятилетнем
+    // графике два деления могут попасть в один год. Рисовать «2014» дважды —
+    // мусор, поэтому такое деление пропускается.
+    if (txt === prev) continue;
+    prev = txt;
     const x = X(i);
     el('line', { x1: x, y1: PAD.t + PH, x2: x, y2: PAD.t + PH + 6, stroke: cssVar('--hair'), 'stroke-width': 1 }, axis);
     const lbl = el('text', {
       x, y: PAD.t + PH + 22, 'text-anchor': 'middle', fill: cssVar('--ink-3'),
       'font-family': 'Consolas, ui-monospace, monospace', 'font-size': 11,
     }, axis);
-    lbl.textContent = year;
-  });
+    lbl.textContent = txt;
+  }
 
   // легенда под графиком
   const leg = $('#milestoneList');
