@@ -11,10 +11,11 @@
 """
 from __future__ import annotations
 import argparse, json, sys, uuid
+from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 
 from . import calibrate, compute as comp, db, dyads as dy, match, verify
-from .sources import ucdp, gdelt, worldbank, simple
+from .sources import ucdp, gdelt, worldbank, simple, adsb
 from . import sanctions as sanc
 
 
@@ -124,6 +125,48 @@ def cmd_pull_candidate(args):
     seen, total = _ingest_batches(con, ds, ucdp.iter_candidate(year, month),
                                   "ucdp_candidate")
     print(f"прочитано событий: {seen}, записано новых: {total}")
+
+
+def cmd_pull_adsb(args):
+    """Снимок военной авиации по зонам наблюдения.
+
+    Пишется ПОЧАСОВО и с заменой, а не накоплением: два запуска в один час
+    описывают одно и то же небо, и складывать их значило бы удваивать зону
+    из-за повторного запуска, а не из-за самолётов.
+
+    Ноль в зоне НЕ записывается как ноль, если зона вообще не наблюдается:
+    отсутствие приёмников и отсутствие авиации — разные вещи, и различить их
+    потом будет уже нечем. Поэтому пишутся два ряда: общее число бортов
+    (наблюдается ли зона) и число значимых (есть ли что-то по делу).
+    """
+    con = db.connect(args.db)
+    zones = adsb_zones()
+    if not zones:
+        print("нет config/zones.json — пропуск"); return
+
+    ac = adsb.fetch_military()
+    if not ac:
+        print("сеть ADS-B не ответила или пуста — пропуск"); return
+
+    hour = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H")
+    counts = adsb.count_by_zone(ac, zones)
+    seen = 0
+    for dyad_id, (total, sig) in sorted(counts.items()):
+        db.set_series(con, "adsb", f"seen:{dyad_id}", hour, float(total))
+        db.set_series(con, "adsb", f"mil:{dyad_id}", hour, float(sig))
+        if total:
+            seen += 1
+            print(f"  {dyad_id:9} бортов {total:3}, значимых {sig}")
+    print(f"снимок {hour}Z: бортов в мире {len(ac)}, "
+          f"зон под наблюдением {seen} из {len(counts)}")
+
+
+def adsb_zones() -> dict:
+    import json as _json
+    p = Path(__file__).resolve().parent.parent / "config" / "zones.json"
+    if not p.exists():
+        return {}
+    return _json.loads(p.read_text(encoding="utf-8")).get("zones", {})
 
 
 def cmd_pull_sanctions(args):
@@ -559,6 +602,9 @@ def main(argv=None):
     vc.add_argument("--provider", default=None, help="mock | gemini | openai")
     vc.add_argument("--out", default="", help="куда сложить разметку для llm-eval")
     vc.set_defaults(fn=cmd_verify_coding)
+
+    sub.add_parser("pull-adsb",
+                   help="снимок военной авиации по зонам").set_defaults(fn=cmd_pull_adsb)
 
     sub.add_parser("pull-unvotes",
                    help="расстояние позиций в ООН").set_defaults(fn=cmd_pull_unvotes)
