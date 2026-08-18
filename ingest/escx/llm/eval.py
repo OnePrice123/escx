@@ -78,14 +78,44 @@ def instability(runs: list[list[int]]) -> float:
     return diff / n if n else 0.0
 
 
+# Одно и то же поле называется по-разному по разные стороны сравнения:
+# verify-coding пишет вердикт модели как llm_escalation/llm_kind (рядом лежат
+# gdelt_kind и cameo_root, и без приставки непонятно, чьё это мнение), а схема
+# разметки называет их escalation_level/indicator_kind. Пока это не сводилось
+# здесь, задокументированная связка verify-coding -> llm-eval падала на
+# KeyError: команды никогда не стыковались, потому что вместе их не гоняли.
+_ALIASES = {
+    "escalation_level": ("escalation_level", "llm_escalation"),
+    "indicator_kind": ("indicator_kind", "llm_kind"),
+}
+
+
+def _field(row: dict, name: str):
+    for key in _ALIASES[name]:
+        if key in row:
+            return row[key]
+    raise KeyError(
+        f"в записи нет поля {name} (искали: {', '.join(_ALIASES[name])}); "
+        f"есть: {', '.join(sorted(row))}")
+
+
 def agreement_report(gold: list[dict], pred: list[dict],
                      repeat_runs: list[list[int]] | None = None,
                      reject_rate: float = 0.0) -> dict:
     """Полный отчёт согласия. Решение о допуске принимается автоматически."""
-    ge = [g["escalation_level"] for g in gold]
-    pe = [p["escalation_level"] for p in pred]
-    gk = [g["indicator_kind"] for g in gold]
-    pk = [p["indicator_kind"] for p in pred]
+    # Сравнение идёт по позициям, поэтому расхождение длин — не мелочь:
+    # zip молча обрежет список по короткому, и каппа посчитается по части
+    # выборки, ничем этого не показав.
+    if len(gold) != len(pred):
+        raise ValueError(
+            f"разметки разной длины: ручная {len(gold)}, модель {len(pred)}. "
+            f"Записи нельзя ни удалять, ни переставлять — непрочитанные статьи "
+            f"остаются на месте.")
+
+    ge = [_field(g, "escalation_level") for g in gold]
+    pe = [_field(p, "escalation_level") for p in pred]
+    gk = [_field(g, "indicator_kind") for g in gold]
+    pk = [_field(p, "indicator_kind") for p in pred]
 
     rep = {
         "n": len(gold),

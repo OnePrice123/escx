@@ -1,0 +1,162 @@
+[
+ {
+  "dyad_id": "PRK-KOR",
+  "day": "2026-08-18",
+  "url": "https://www.lbc.co.uk/article/south-korea-trump-kim-jong-un-5HjdgDx_2/",
+  "cameo_root": "15",
+  "gdelt_kind": "exercise",
+  "llm_kind": "none",
+  "llm_escalation": 0,
+  "evidence": "South Korea's President has called for stronger independent defence capabilities, after Donald Trump said North Korean dictator Kim Jong-Un is a \"very good friend\" of his as he announced plans to withdraw from joint military drills with South Korea."
+ },
+ {
+  "dyad_id": "RUS-UKR",
+  "day": "2026-08-18",
+  "url": "https://www.illawarramercury.com.au/story/9332979/moscow-attacked-by-hundreds-of-ukrainian-drones/",
+  "cameo_root": "18",
+  "gdelt_kind": "armed_incident",
+  "llm_kind": "armed_incident",
+  "llm_escalation": 4,
+  "evidence": "Ukrainian forces have staged one of their biggest drone attacks on Russia since Moscow's invasion more than four years ago, firing almost 800 drones just two days after launching a similar salvo."
+ },
+ {
+  "dyad_id": "RUS-UKR",
+  "day": "2026-08-18",
+  "url": "https://www.lbc.co.uk/article/russia-missile-attack-ukraine-moscow-warning-5HjdgDy_2/",
+  "cameo_root": "18",
+  "gdelt_kind": "armed_incident",
+  "llm_kind": "armed_incident",
+  "llm_escalation": 4,
+  "evidence": "Russia missile attack kills 10 in Ukraine hours after Moscow warned of 'consequences' for Britain as UK drones used by Kyiv"
+ },
+ {
+  "dyad_id": "RUS-UKR",
+  "day": "2026-08-18",
+  "url": "https://www.irishtimes.com/world/europe/2026/08/18/russian-missile-attack-kills-10-in-ukraines-kharkiv-region-governor-says/",
+  "cameo_root": "18",
+  "gdelt_kind": "armed_incident",
+  "llm_kind": "rhetoric",
+  "llm_escalation": 1,
+  "evidence": "The Russian embassy to the UK said on Monday that Britain had been deliberately escalating the Ukraine conflict and the deeper its involvement, “the higher the price it will pay”."
+ },
+ {
+  "dyad_id": "RUS-UKR",
+  "day": "2026-08-18",
+  "url": "https://www.prokerala.com/news/articles/a1801722.html",
+  "cameo_root": "19",
+  "gdelt_kind": "armed_incident",
+  "llm_kind": "armed_incident",
+  "llm_escalation": 4,
+  "evidence": "Moscow came under the largest Ukrainian drone attack in two years, with 620 unmanned aerial vehicles (UAVs) targeting the Russian capital, Moscow Mayor Sergey Sobyanin said on Tuesday."
+ },
+ {
+  "dyad_id": "RUS-UKR",
+  "day": "2026-08-18",
+  "url": "http://www.europesun.com/news/279248897/hundreds-of-ukrainian-drones-target-moscow-overnight-mayor",
+  "cameo_root": "19",
+  "gdelt_kind": "armed_incident",
+  "llm_kind": "armed_incident",
+  "llm_escalation": 4,
+  "evidence": "Hundreds of Ukrainian drones target Moscow overnight mayor"
+ },
+ {
+  "dyad_id": "RUS-UKR",
+  "day": "2026-08-18",
+  "url": "https://www.shippingtribune.com/news/shipping/Russia+Receives+First+Gasoline+Cargo+From+India+as+Fuel+Shortages+Spread",
+  "cameo_root": "19",
+  "gdelt_kind": "armed_incident",
+  "llm_kind": "none",
+  "llm_escalation": 0,
+  "evidence": "One moment, please... Loader Please wait while your request is being verified..."
+ },
+ {
+  "dyad_id": "RUS-UKR",
+  "day": "2026-08-18",
+  "url": "https://www.dailymail.com/news/article-16060237/Ukraine-hits-Moscow-region-huge-wave-drones-Putin-warned-Britain-pay-arming-Kyiv.html",
+  "cameo_root": "19",
+  "gdelt_kind": "armed_incident",
+  "llm_kind": "armed_incident",
+  "llm_escalation": 4,
+  "evidence": "Ukraine hits Moscow region with another huge wave of drones"
+ },
+ {
+  "dyad_id": "RUS-UKR",
+  "day": "2026-08-18",
+  "url": "https://www.winnipegfreepress.com/world/2026/08/18/ukraine-aims-a-drone-blitz-at-moscow-while-russian-missiles-kill-10-in-a-ukrainian-village",
+  "cameo_root": "19",
+  "gdelt_kind": "armed_incident",
+  "llm_kind": "armed_incident",
+  "llm_escalation": 4,
+  "evidence": "The Moscow region is hit by a drone blitz as Russian missiles kill 10 in a Ukrainian village"
+ },
+ {
+  "dyad_id": "PRK-KOR",
+  "day": "2026-08-17",
+  "url": "https://isp.netscape.com:443/news/world/story/0001/20260816/ae21e0af5ea16f0a74e9a176b3cc2136",
+  "cameo_root": "15",
+  "gdelt_kind": "exercise",
+  "llm_kind": "rhetoric",
+  "llm_escalation": 1,
+  "evidence": "Trump orders Pentagon to scale back joint exercises with South Korea"
+ },
+ {
+  "dyad_id": "PRK-KOR",
+  "day": "2026-08-17",
+  "url": "https://krcrtv.com/news/nation-world/trump-orders-pentagon-to-scale-back-on-planned-joint-military-exercises-with-south-korea-north-korean-kim-jong-un-demilitarizing-truth-social-republic-of-korea-military-drills-war-nuclear-program",
+  "cameo_root": "15",
+  "gdelt_kind": "exercise",
+  "llm_kind": "armed_incident",
+  "llm_escalation": 4,
+  "evidence": "A defendant admitted to traveling to Washington armed with a knife and Molotov cocktails as part of a plan to kill Treasury Secretary Scott Bessent."
+ },
+ {
+  "dyad_id": "PRK-KOR",
+  "day": "2026-08-17",
+  "url": "https://www.internazionale.it/ultime-notizie-reuters/2026/08/17/trump-instructs-pentagon-to-reduce-military-exercises-with-south-korea",
+  "cameo_root": "19",
+  "gdelt_kind": "armed_incident",
+  "llm_kind": "rhetoric",
+  "llm_escalation": 1,
+  "evidence": "U.S. President Donald Trump on Sunday instructed the Pentagon to “substantially reduce” joint military exercises with long-term Asian ally South Korea, citing the cost of the drills and Seoul’s refusal to take part in actions against Iran."
+ },
+ {
+  "dyad_id": "PRK-KOR",
+  "day": "2026-08-17",
+  "url": "https://www.watoday.com.au/world/asia/trump-praises-north-korean-dictator-kim-jong-un-slashes-military-drills-with-seoul-20260817-p60ow1.html",
+  "cameo_root": "15",
+  "gdelt_kind": "exercise",
+  "llm_kind": "exercise",
+  "llm_escalation": 3,
+  "evidence": "US President Donald Trump said he had instructed the Pentagon to substantially reduce joint military exercises with South Korea"
+ },
+ {
+  "dyad_id": "RUS-UKR",
+  "day": "2026-08-17",
+  "url": "https://www.adn.com/nation-world/2026/08/16/ukraine-launches-one-of-its-largest-aerial-attacks-of-the-war-killing-at-least-6-people-in-russia/",
+  "cameo_root": "19",
+  "gdelt_kind": "armed_incident",
+  "llm_kind": "armed_incident",
+  "llm_escalation": 4,
+  "evidence": "Ukraine launches one of its largest aerial attacks of the war, killing at least 6 people in Russia"
+ },
+ {
+  "dyad_id": "PRK-KOR",
+  "day": "2026-08-17",
+  "url": "http://www.japanherald.com/news/279245833/sends-inappropriate-hostile-signal-trump-orders-reduction-in-us-south-korea-military-drills",
+  "cameo_root": "15",
+  "gdelt_kind": "exercise",
+  "llm_kind": "exercise",
+  "llm_escalation": 3,
+  "evidence": "US President Donald Trump has instructed Secretary of War Pete Hegseth to 'substantially reduce' joint military exercises with South Korea"
+ },
+ {
+  "dyad_id": "PRK-KOR",
+  "day": "2026-08-17",
+  "url": "https://www.wral.com/news/ap/ae21e-trump-orders-pentagon-to-scale-back-joint-exercises-with-south-korea/",
+  "cameo_root": "15",
+  "gdelt_kind": "exercise",
+  "llm_kind": "sanctions",
+  "llm_escalation": 2,
+  "evidence": "President Donald Trump ordered the Pentagon on Sunday to scale back annual joint military exercises with South Korea"
+ }
+]

@@ -12,3 +12,7 @@ site/
 
 # локальный кэш wrangler — состояние сборки Worker, не исходники
 api/.wrangler/
+
+# страница разметки и кэш переводов — собираются из pred.json
+ingest/label.html
+ingest/label_cache.json

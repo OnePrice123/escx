@@ -285,6 +285,32 @@ check("текст извлекается", "Текст" in V.html_to_text("<html
 check("длина ограничена, чтобы не платить за мусор",
       len(V.html_to_text(b"<p>" + b"a" * 99999 + b"</p>", limit=500)) <= 500)
 check("сущности раскрываются", "&" in V.html_to_text(b"<p>A &amp; B</p>"))
+
+# Ловушка с живой выборки: у изданий первые сотни знаков страницы — это меню,
+# и в лимит промпта уезжала навигация, а конец статьи не помещался.
+_MENU = (b"<html><body><nav>Sections Search Subscribe Subscribe Close Home "
+         b"Latest Crosswords &amp; Puzzles Newsletters Contact Us Advertising</nav>"
+         b"<article><p>" + "Российские беспилотники атаковали объекты в Подмосковье, сообщили власти региона.".encode() * 6 +
+         b"</p></article><footer>Terms Privacy Cookies</footer></body></html>")
+_txt = V.html_to_text(_MENU)
+check("меню не попадает в текст статьи", "Subscribe" not in _txt, _txt[:60])
+check("подвал не попадает в текст статьи", "Privacy" not in _txt)
+check("сам текст статьи на месте", "беспилотники" in _txt)
+check("если абзацев нет, откат на прежнее поведение",
+      "Совет" in V.html_to_text(("<html><body><div>" + "Совет безопасности собрался на заседание. " * 20
+                                 + "</div></body></html>").encode()))
+
+# Заглушки приходят с кодом 200 и валидным HTML — отличить их можно только
+# по содержанию. Пропустить такую страницу значит записать согласие на пустоте
+# и смягчить шлюз допуска.
+check("проверка «вы не робот» распознана как заглушка",
+      V.looks_like_stub("One moment, please... Please wait while your request is being verified..."))
+check("страница ошибки распознана как заглушка",
+      V.looks_like_stub("Access denied. " + "x" * 500))
+check("слишком короткий текст — заглушка", V.looks_like_stub("Две строки всего."))
+check("пустой текст — заглушка", V.looks_like_stub(""))
+check("настоящая статья заглушкой не считается",
+      not V.looks_like_stub("Российские беспилотники атаковали объекты в Подмосковье. " * 12))
 # Недоступный robots.txt = запрет. Сайт, который не отвечает, мы не читаем.
 check("битый адрес не читается", V.allowed("не адрес") is False)
 check("код 19 и armed_incident сходятся", V.agrees("19", "armed_incident") is True)

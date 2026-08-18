@@ -26,9 +26,21 @@
 """
 from __future__ import annotations
 import json
+import math
 from ..http import get
 
 API = "https://api.adsb.lol/v2/mil"
+
+# Борта из списка LADD: те, чей владелец попросил скрыть их из публичного
+# показа. Коммерческие ленты просьбу исполняют, независимые сети — нет, и это
+# ровно та причина, по которой источник выбран такой. Отдельная ручка, потому
+# что в /v2/mil они не попадают.
+API_LADD = "https://api.adsb.lol/v2/ladd"
+
+# Все борта вокруг точки — гражданские в том числе. Нужен НЕ для военных:
+# им меряется НАБЛЮДАЕМОСТЬ зоны, см. zone_traffic. Радиус в морских милях.
+API_POINT = "https://api.adsb.lol/v2/point/{lat}/{lon}/{radius}"
+MAX_RADIUS_NM = 250
 
 # Типы, по которым видно подготовку и наблюдение, а не рутину.
 #
@@ -46,9 +58,8 @@ SIGNIFICANT = {
 }
 
 
-def fetch_military() -> list[dict]:
-    """Все военные борта, которые сеть видит прямо сейчас."""
-    blob = get(API, use_cache=False)
+def _aircraft(url: str) -> list[dict]:
+    blob = get(url, use_cache=False)
     if not blob:
         return []
     try:
@@ -56,6 +67,55 @@ def fetch_military() -> list[dict]:
     except ValueError:
         return []
     return [a for a in (d.get("ac") or []) if a.get("lat") is not None]
+
+
+def fetch_military() -> list[dict]:
+    """Военные борта, которые сеть видит прямо сейчас.
+
+    К военной ленте добавляются борта из LADD — те, что просили скрыть и что
+    коммерческие ленты прячут. Ради них источник и выбирался, а в /v2/mil они
+    не попадают. Склейка по hex: один борт может быть в обоих списках.
+    """
+    seen, out = set(), []
+    for url in (API, API_LADD):
+        for a in _aircraft(url):
+            h = a.get("hex")
+            if h and h in seen:
+                continue
+            if h:
+                seen.add(h)
+            out.append(a)
+    return out
+
+
+def zone_center_radius(box: list[float]) -> tuple[float, float, int]:
+    """Центр прямоугольника и радиус в морских милях, покрывающий его.
+
+    Одна точка вместо прямоугольника — упрощение, и оно осознанное: ручка
+    источника принимает только круг, а мерить кругом мы будем не активность,
+    а сам факт наблюдения. Для «видно ли тут вообще что-нибудь» центра зоны
+    достаточно, и потолок в 250 миль этого не портит.
+    """
+    s, w, n, e = box
+    lat, lon = (s + n) / 2, (w + e) / 2
+    # Градус широты — 60 морских миль; по долготе — те же 60, сжатые косинусом.
+    half_lat = (n - s) / 2 * 60
+    half_lon = (e - w) / 2 * 60 * max(0.1, math.cos(math.radians(lat)))
+    r = int(math.hypot(half_lat, half_lon))
+    return round(lat, 4), round(lon, 4), max(10, min(MAX_RADIUS_NM, r))
+
+
+def zone_traffic(box: list[float]) -> int:
+    """Сколько бортов вообще видно в зоне — гражданских в том числе.
+
+    Это и есть ответ на вопрос «наблюдается ли зона». Раньше на него отвечал
+    счётчик военных бортов из той же ленты, и ответить он не мог в принципе:
+    ноль военных над Тайванем означает и «военных нет», и «приёмников нет», а
+    для индекса это противоположные вещи. Гражданский трафик их разделяет —
+    он есть всюду, где есть приёмники.
+    """
+    lat, lon, r = zone_center_radius(box)
+    return len(_aircraft(API_POINT.format(lat=lat, lon=lon, radius=r)))
 
 
 def in_box(a: dict, box: list[float]) -> bool:

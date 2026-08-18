@@ -1,0 +1,66 @@
+[
+ {
+  "escalation_level": 0,
+  "indicator_kind": "exercise"
+ },
+ {
+  "escalation_level": 4,
+  "indicator_kind": "armed_incident"
+ },
+ {
+  "escalation_level": 4,
+  "indicator_kind": "armed_incident"
+ },
+ {
+  "escalation_level": 1,
+  "indicator_kind": "rhetoric"
+ },
+ {
+  "escalation_level": 4,
+  "indicator_kind": "armed_incident"
+ },
+ {
+  "escalation_level": 4,
+  "indicator_kind": "armed_incident"
+ },
+ {
+  "escalation_level": 0,
+  "indicator_kind": "none"
+ },
+ {
+  "escalation_level": 4,
+  "indicator_kind": "armed_incident"
+ },
+ {
+  "escalation_level": 4,
+  "indicator_kind": "armed_incident"
+ },
+ {
+  "escalation_level": 1,
+  "indicator_kind": "rhetoric"
+ },
+ {
+  "escalation_level": 4,
+  "indicator_kind": "armed_incident"
+ },
+ {
+  "escalation_level": 1,
+  "indicator_kind": "rhetoric"
+ },
+ {
+  "escalation_level": 3,
+  "indicator_kind": "exercise"
+ },
+ {
+  "escalation_level": 4,
+  "indicator_kind": "armed_incident"
+ },
+ {
+  "escalation_level": 3,
+  "indicator_kind": "exercise"
+ },
+ {
+  "escalation_level": 2,
+  "indicator_kind": "sanctions"
+ }
+]

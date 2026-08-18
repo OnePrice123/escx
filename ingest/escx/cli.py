@@ -136,8 +136,17 @@ def cmd_pull_adsb(args):
 
     Ноль в зоне НЕ записывается как ноль, если зона вообще не наблюдается:
     отсутствие приёмников и отсутствие авиации — разные вещи, и различить их
-    потом будет уже нечем. Поэтому пишутся два ряда: общее число бортов
-    (наблюдается ли зона) и число значимых (есть ли что-то по делу).
+    потом будет уже нечем.
+
+    ЧЕМ ИЗМЕРЯЕТСЯ НАБЛЮДАЕМОСТЬ. Раньше — числом военных бортов из той же
+    ленты, и это не работало в принципе: ноль военных над Тайванем означает и
+    «военных нет», и «приёмников нет». Теперь по каждой зоне отдельно берётся
+    ВЕСЬ трафик, гражданский в том числе: он есть всюду, где есть приёмники,
+    и потому разделяет эти два случая. Это лишний запрос на зону в час —
+    четырнадцать запросов, для волонтёрской сети терпимо.
+
+    Пишутся два ряда: obs — сколько бортов видно вообще, mil — сколько из них
+    значимых по типу.
     """
     con = db.connect(args.db)
     zones = adsb_zones()
@@ -150,15 +159,19 @@ def cmd_pull_adsb(args):
 
     hour = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H")
     counts = adsb.count_by_zone(ac, zones)
-    seen = 0
-    for dyad_id, (total, sig) in sorted(counts.items()):
-        db.set_series(con, "adsb", f"seen:{dyad_id}", hour, float(total))
+    observed = 0
+    for dyad_id, (in_zone, sig) in sorted(counts.items()):
+        box = zones[dyad_id].get("box")
+        traffic = adsb.zone_traffic(box) if box else 0
+        db.set_series(con, "adsb", f"obs:{dyad_id}", hour, float(traffic))
         db.set_series(con, "adsb", f"mil:{dyad_id}", hour, float(sig))
-        if total:
-            seen += 1
-            print(f"  {dyad_id:9} бортов {total:3}, значимых {sig}")
-    print(f"снимок {hour}Z: бортов в мире {len(ac)}, "
-          f"зон под наблюдением {seen} из {len(counts)}")
+        if traffic:
+            observed += 1
+        mark = "" if traffic else "  ЗОНА НЕ НАБЛЮДАЕТСЯ"
+        print(f"  {dyad_id:9} всего бортов {traffic:4}, военных {in_zone:3}, "
+              f"значимых {sig}{mark}")
+    print(f"снимок {hour}Z: военных бортов в мире {len(ac)}, "
+          f"зон под наблюдением {observed} из {len(counts)}")
 
 
 def adsb_zones() -> dict:
@@ -293,11 +306,29 @@ def cmd_verify_coding(args):
     from .llm.extract import _parse_json
 
     con = db.connect(args.db)
+    # ВЫБОРКА РАЗНОСИТСЯ ПО СЮЖЕТАМ, а не берётся подряд с конца.
+    #
+    # Прежний запрос брал самые свежие события — и первый же живой прогон дал
+    # шестнадцать записей на две новости: удары по Подмосковью в пересказе
+    # девяти изданий и сокращение учений с Кореей в пересказе семи. Согласие
+    # модели с человеком считалось по двум сюжетам, а выглядело как шестнадцать
+    # независимых случаев; каппа при этом вышла 1.000 и не значила ничего.
+    #
+    # Поэтому по одному событию на (пара, день, корень CAMEO). Один и тот же
+    # инцидент, размноженный лентами, схлопывается в одну запись, а выборка
+    # растягивается по парам, датам и типам действия — то есть по тому, на чём
+    # модель как раз и может расходиться с человеком.
     rows = list(con.execute(
-        "SELECT dyad_id, occurred_at, cameo_code, event_type, payload "
-        "FROM raw_events WHERE source='gdelt_export' "
-        "  AND substr(event_type,7,2) IN ('18','19','20','15') "
-        "ORDER BY occurred_at DESC LIMIT ?", (args.limit * 4,)))
+        "SELECT dyad_id, occurred_at, cameo_code, event_type, payload FROM ("
+        "  SELECT *, ROW_NUMBER() OVER ("
+        "      PARTITION BY dyad_id, occurred_at, substr(event_type,7,2)"
+        "      ORDER BY source_id) rn"
+        "    FROM raw_events"
+        "   WHERE source='gdelt_export'"
+        "     AND substr(event_type,7,2) IN ('18','19','20','15')"
+        ") WHERE rn = 1 "
+        "ORDER BY occurred_at DESC, dyad_id, substr(event_type,7,2) "
+        "LIMIT ?", (args.limit * 4,)))
     if not rows:
         print("нет событий для проверки"); return
 
