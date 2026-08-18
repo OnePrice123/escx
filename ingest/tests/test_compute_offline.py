@@ -81,6 +81,32 @@ check("отсутствие медиапотока — None, а не ноль",
 check("прокси живёт в инфоблоке, а не в кинетическом",
       comp.INDICATORS["inf_violence"] == "informational")
 
+print("\n2a. Санкции: событие — это дельта, а не список")
+from escx import sanctions as sanc
+def sev(day, sign):
+    return {"source": "ofac_sdn", "source_id": f"x{sign}{day}",
+            "occurred_at": day.isoformat(), "dyad_id": "IRN-USA",
+            "match_level": "rule", "fatalities": None, "lat": None, "lon": None,
+            "goldstein": None, "num_mentions": None, "date_prec": None,
+            "cameo_code": None,
+            "event_type": "sanction_add" if sign > 0 else "sanction_lift"}
+COV_E = {**COV, "economic": (TODAY, TODAY)}
+bs = comp.bucket([sev(TODAY, +1)] * 5 + [sev(TODAY, -1)] * 2)
+check("введения и снятия складываются со знаком",
+      comp.raw_values(bs, TODAY, {}, COV_E)["eco_sanctions"] == 3.0,
+      comp.raw_values(bs, TODAY, {}, COV_E)["eco_sanctions"])
+check("ноль изменений — это 0.0, измеренная тишина",
+      comp.raw_values(comp.bucket([]), TODAY, {}, COV_E)["eco_sanctions"] == 0.0)
+check("вне периода источника — не ноль, а None",
+      comp.raw_values(bs, TODAY, {}, COV)["eco_sanctions"] is None)
+check("санкции живут в экономическом блоке",
+      comp.INDICATORS["eco_sanctions"] == "economic")
+# Главный инвариант: пара без привязки программ не получает нулей и не надувает
+# покрытие. Проверяется на самой таблице привязок, а не на моке.
+ch = sanc.dyads_with_channel()
+check("канал есть не у всех пар", 0 < len(ch) < 21, len(ch))
+check("пары без канала в таблице отсутствуют", "EGY-ETH" not in ch)
+
 print("\n3. Пороги фаз — числа UCDP, не наши")
 check("1000 смертей -> война", comp.phase_rule(1000, 50, {})[0] == 5)
 check("999 смертей -> ограниченный конфликт", comp.phase_rule(999, 50, {})[0] == 4)

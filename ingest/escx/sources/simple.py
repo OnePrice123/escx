@@ -47,11 +47,36 @@ def sanctions_delta(prev_ids: set[str], curr_ids: set[str]) -> dict:
 
 def parse_ofac_sdn_csv(blob: bytes) -> set[str]:
     """У sdn.csv нет заголовка; первое поле — ent_num."""
-    ids = set()
+    return {r["ent_num"] for r in parse_ofac_sdn_rows(blob)}
+
+
+# Колонки sdn.csv, порядок задан спецификацией OFAC. Заголовка в файле нет.
+SDN_COLS = ["ent_num", "sdn_name", "sdn_type", "program", "title",
+            "call_sign", "vess_type", "tonnage", "grt", "vess_flag",
+            "vess_owner", "remarks"]
+
+
+def parse_ofac_sdn_rows(blob: bytes) -> list[dict]:
+    """Записи SDN с программами.
+
+    Страны в файле нет вовсе — есть ПРОГРАММА, и это единственная зацепка для
+    привязки записи к конфликту. Поле выглядит как «IRAN] [IFSR» и содержит
+    несколько программ сразу, поэтому разбирается, а не сравнивается целиком.
+
+    Кодировка latin-1, а не utf-8: файл ведётся в ней десятилетиями, и utf-8
+    падает на первом же имени с диакритикой.
+    """
+    out = []
     for row in csv.reader(io.StringIO(blob.decode("latin-1", "replace"))):
-        if row and row[0].strip().isdigit():
-            ids.add(row[0].strip())
-    return ids
+        if not row or not row[0].strip().isdigit():
+            continue
+        r = dict(zip(SDN_COLS, [c.strip() for c in row]))
+        progs = [p.strip() for p in r.get("program", "").replace("[", "").split("]")]
+        out.append({"ent_num": r["ent_num"],
+                    "name": r.get("sdn_name", ""),
+                    "sdn_type": r.get("sdn_type", ""),
+                    "programs": [p for p in progs if p and p != "-0-"]})
+    return out
 
 
 # --------------------------------------------------------------------------

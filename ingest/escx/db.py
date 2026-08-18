@@ -120,6 +120,19 @@ CREATE TABLE IF NOT EXISTS runs (
 
 -- Метка последнего успешно обработанного среза по каждому источнику.
 -- Без неё каждый прогон тянет всё заново; с ней — только новое.
+-- Текущий состав санкционного списка по диадам.
+-- Изменяемая таблица, и это осознанно: raw_events остаётся append-only, туда
+-- пишутся СОБЫТИЯ (мера введена / мера снята), а здесь лежит состояние, по
+-- которому эти события вычисляются. Без него снятие меры отличить не от чего:
+-- запись просто исчезает из выгрузки OFAC, никакого признака не оставляя.
+CREATE TABLE IF NOT EXISTS sanctions_state (
+  dyad_id    TEXT NOT NULL,
+  ent_num    TEXT NOT NULL,
+  first_seen TEXT NOT NULL,
+  last_seen  TEXT NOT NULL,
+  PRIMARY KEY (dyad_id, ent_num)
+);
+
 CREATE TABLE IF NOT EXISTS watermarks (
   source     TEXT PRIMARY KEY,
   position   TEXT NOT NULL,
@@ -193,6 +206,21 @@ def add_series(con, source: str, key: str, as_of: str, value: float) -> None:
         "INSERT INTO series(source,series_key,as_of,value) VALUES(?,?,?,?) "
         "ON CONFLICT(source,series_key,as_of) DO UPDATE SET value=value+excluded.value",
         (source, key, as_of, value))
+    con.commit()
+
+
+def sanctions_state(con, dyad_id: str) -> set[str]:
+    """Записи, числившиеся активными по итогам прошлого прогона."""
+    return {r["ent_num"] for r in con.execute(
+        "SELECT ent_num FROM sanctions_state WHERE dyad_id=?", (dyad_id,))}
+
+
+def set_sanctions_state(con, dyad_id: str, ent_nums: set[str], day: str) -> None:
+    """Заменяет состояние диады на текущее. Вызывать ПОСЛЕ вычисления дельты."""
+    con.execute("DELETE FROM sanctions_state WHERE dyad_id=?", (dyad_id,))
+    con.executemany(
+        "INSERT INTO sanctions_state(dyad_id,ent_num,first_seen,last_seen) "
+        "VALUES(?,?,?,?)", [(dyad_id, e, day, day) for e in sorted(ent_nums)])
     con.commit()
 
 

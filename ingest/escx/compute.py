@@ -29,6 +29,7 @@ import uuid
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
+from . import sanctions
 from .indicators import BLOCK_WEIGHTS, MAD_K, heat, robust_z, tempo, winsorize
 
 METHOD_VERSION = "0.3.1"
@@ -47,6 +48,7 @@ INDICATORS = {
     "inf_pressure":   "informational",
     "inf_share":      "informational",
     "inf_violence":   "informational",
+    "eco_sanctions":  "economic",
 }
 
 # Корни CAMEO, означающие применение силы: 18 — нападение, 19 — бой,
@@ -122,14 +124,19 @@ def bucket(events: list[dict]) -> dict[date, dict]:
     out: dict[date, dict] = defaultdict(
         lambda: {"kin_n": 0, "kin_fat": 0, "cells": set(),
                  "g_num": 0.0, "g_den": 0.0, "mentions": 0.0,
-                 "med_n": 0, "med_viol": 0,
+                 "med_n": 0, "med_viol": 0, "sanc": 0,
                  "cameo": defaultdict(int)})
     for e in events:
         d = _d(e["occurred_at"])
         if not d:
             continue
         b = out[d]
-        if e["source"] in UCDP_SOURCES:
+        if e["source"] == "ofac_sdn":
+            # Введение меры и снятие — одно событие с разным знаком. Складываем,
+            # а не считаем по отдельности: неделя, где ввели десять мер и сняли
+            # десять, по смыслу ближе к нулю, чем к двадцати.
+            b["sanc"] += 1 if e["event_type"] == "sanction_add" else -1
+        elif e["source"] in UCDP_SOURCES:
             if (e["date_prec"] or 1) >= 3:
                 continue
             b["kin_n"] += 1
@@ -170,6 +177,7 @@ def raw_values(buckets: dict[date, dict], day: date,
     covered — {'kinetic': (первый день, последний), 'informational': ...}.
     """
     kin_n = kin_fat = 0
+    sanc = 0
     cells: set = set()
     for i in range(WIN_KIN):
         b = buckets.get(day - timedelta(days=i))
@@ -177,6 +185,7 @@ def raw_values(buckets: dict[date, dict], day: date,
             kin_n += b["kin_n"]
             kin_fat += b["kin_fat"]
             cells |= b["cells"]
+            sanc += b["sanc"]
 
     g_num = g_den = mentions = 0.0
     med_n = med_viol = 0
@@ -215,6 +224,10 @@ def raw_values(buckets: dict[date, dict], day: date,
         "inf_pressure": pressure,
         "inf_share": share,
         "inf_violence": violence,
+        # Чистое изменение числа мер за 30 дней. Ноль здесь ЗНАЧИМ: он говорит
+        # «список смотрели, ничего не менялось», и это измеренная тишина, а не
+        # отсутствие данных. Отсутствие данных задаётся ниже, через covered.
+        "eco_sanctions": float(sanc),
     }
     for key, block in INDICATORS.items():
         span = (covered or {}).get(block)
@@ -311,12 +324,15 @@ def compute(con, *, days: int = SERIES_DAYS, today: date | None = None) -> dict:
     # диаде: у тихой пары своих событий может не быть вовсе, но источник по ней
     # отработал — и это именно измеренная тишина.
     covered: dict[str, tuple[date, date] | None] = {}
-    for block, srcs in (("kinetic", UCDP_SOURCES), ("informational", ("gdelt_export",))):
+    for block, srcs in (("kinetic", UCDP_SOURCES), ("informational", ("gdelt_export",)),
+                        ("economic", ("ofac_sdn",))):
         marks = ",".join("?" * len(srcs))
         r = con.execute(f"SELECT MIN(occurred_at) a, MAX(occurred_at) b FROM raw_events "
                         f"WHERE source IN ({marks})", srcs).fetchone()
         a, b = _d(r["a"]), _d(r["b"])
         covered[block] = (a, b) if a and b else None
+
+    sanc_channel = sanctions.dyads_with_channel()
 
     buckets: dict[str, dict[date, dict]] = {}
     first_day = today
@@ -340,7 +356,16 @@ def compute(con, *, days: int = SERIES_DAYS, today: date | None = None) -> dict:
     raw: dict[str, dict[date, dict]] = {}
     for d in dyads:
         b = buckets[d["dyad_id"]]
-        raw[d["dyad_id"]] = {day: raw_values(b, day, global_mentions, covered)
+        # Покрытие экономического блока — ПОДИАДНОЕ, в отличие от остальных.
+        # Санкционный источник меряет не все пары, а только те, для которых
+        # есть привязка программ. У прочих блок обязан остаться неизмеренным:
+        # ноль означал бы «мер не вводили», и покрытие выросло бы до 40 % у
+        # всех двадцати при реальном сигнале у трёх. Это ровно тот самообман,
+        # против которого покрытие и придумано.
+        cov_d = dict(covered)
+        if d["dyad_id"] not in sanc_channel:
+            cov_d["economic"] = None
+        raw[d["dyad_id"]] = {day: raw_values(b, day, global_mentions, cov_d)
                              for day in all_days}
 
     # 3. Опорные величины. Хвост в REF_LAG дней отрезан: иначе сегодняшний

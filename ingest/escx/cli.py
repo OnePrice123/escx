@@ -10,11 +10,12 @@
   python -m escx.cli status
 """
 from __future__ import annotations
-import argparse, sys, uuid
+import argparse, json, sys, uuid
 from datetime import date, datetime, timedelta, timezone
 
 from . import compute as comp, db, dyads as dy, match
-from .sources import ucdp, gdelt, worldbank
+from .sources import ucdp, gdelt, worldbank, simple
+from . import sanctions as sanc
 
 
 def cmd_init(args):
@@ -123,6 +124,81 @@ def cmd_pull_candidate(args):
     seen, total = _ingest_batches(con, ds, ucdp.iter_candidate(year, month),
                                   "ucdp_candidate")
     print(f"прочитано событий: {seen}, записано новых: {total}")
+
+
+def cmd_pull_sanctions(args):
+    """Санкционные меры OFAC как события экономического блока.
+
+    Индикатор — не список, а ДЕЛЬТА к прошлому прогону: сам по себе перечень из
+    девятнадцати тысяч записей ничего не говорит о динамике, а введение меры
+    является событием эскалации, снятие — деэскалации.
+
+    Привязка записи к диаде идёт через программу (поле program в sdn.csv), и
+    таблица привязок лежит в config/sanctions_programs.json отдельным файлом:
+    это редакторское решение, а не выгрузка из источника. Страны в файле OFAC
+    нет вовсе — программа единственная зацепка.
+
+    Пара, для которой привязки нет, НЕ получает нулей: у неё экономический блок
+    остаётся неизмеренным. Ноль означал бы «санкций не вводили», а правда в том,
+    что этим источником её канал не меряется совсем.
+    """
+    con = db.connect(args.db)
+    prog_map = sanc.load_program_map()
+    if not prog_map:
+        print("нет config/sanctions_programs.json — пропуск"); return
+
+    blob = simple.get(simple.OFAC_SDN_CSV, use_cache=False)
+    if not blob:
+        print("выгрузка OFAC недоступна — пропуск"); return
+    rows = simple.parse_ofac_sdn_rows(blob)
+    if len(rows) < 1000:
+        # Пустой или обрезанный файл выглядел бы как массовое снятие всех мер
+        # разом и создал бы гигантский ложный сигнал деэскалации.
+        print(f"в выгрузке всего {len(rows)} записей — это не похоже на правду, "
+              f"прогон остановлен"); return
+    print(f"OFAC SDN: записей {len(rows)}")
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    events = []
+    for dyad_id, progs in prog_map.items():
+        curr = {r["ent_num"] for r in rows if progs & set(r["programs"])}
+        prev = db.sanctions_state(con, dyad_id)
+        first_run = not prev
+
+        added, removed = curr - prev, prev - curr
+        # Первый прогон — не событие: весь список разом не «вводился сегодня».
+        # Иначе стартовый день дал бы всплеск на тысячи мер из ниоткуда.
+        if first_run:
+            print(f"  {dyad_id}: первый прогон, зафиксировано {len(curr)} мер "
+                  f"(событиями не считаются)")
+        else:
+            for e in sorted(added):
+                events.append(_sanction_event(dyad_id, e, today, +1))
+            for e in sorted(removed):
+                events.append(_sanction_event(dyad_id, e, today, -1))
+            if added or removed:
+                print(f"  {dyad_id}: введено {len(added)}, снято {len(removed)}")
+            else:
+                print(f"  {dyad_id}: без изменений ({len(curr)} мер)")
+        db.set_sanctions_state(con, dyad_id, curr, today)
+
+    n = db.upsert_events(con, events)
+    print(f"записано событий: {n}")
+
+
+def _sanction_event(dyad_id: str, ent_num: str, day: str, sign: int) -> dict:
+    kind = "sanction_add" if sign > 0 else "sanction_lift"
+    return {
+        "source": "ofac_sdn",
+        # Дата в ключе обязательна: одну и ту же запись могут снять и через год
+        # вернуть, и без даты второе событие потерялось бы как дубликат.
+        "source_id": f"{dyad_id}:{ent_num}:{kind}:{day}",
+        "occurred_at": day,
+        "dyad_id": dyad_id,
+        "match_level": "rule",
+        "event_type": kind,
+        "payload": json.dumps({"ent_num": ent_num, "sign": sign}, ensure_ascii=False),
+    }
 
 
 def cmd_backfill_gdelt(args):
@@ -322,6 +398,9 @@ def main(argv=None):
     g = sub.add_parser("pull-gdelt")
     g.add_argument("--slices", type=int, default=4)
     g.set_defaults(fn=cmd_pull_gdelt)
+
+    sub.add_parser("pull-sanctions",
+                   help="дельта санкционного списка OFAC").set_defaults(fn=cmd_pull_sanctions)
 
     bg = sub.add_parser("backfill-gdelt",
                         help="история из суточных файлов GDELT 1.0")
