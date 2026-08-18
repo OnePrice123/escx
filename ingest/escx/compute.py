@@ -60,7 +60,19 @@ INDICATORS = {
     "inf_violence":   "informational",
     "eco_sanctions":  "economic",
     "dip_distance":   "diplomatic",
+    "mil_air":        "military",
 }
+
+# Сколько часовых снимков нужно, чтобы говорить о норме зоны.
+#
+# Восемь — минимум для медианы и MAD, но восемь ЧАСОВ это половина суток и
+# ловит только дневной срез. Семь суток дают суточный и недельный профиль:
+# над военной базой в понедельник утром и в воскресенье ночью небо разное, и
+# без полной недели отклонение считалось бы от времени суток, а не от событий.
+AIR_MIN_HOURS = 24 * 7
+
+# Окно, по которому считается текущее значение.
+WIN_AIR = 3
 
 # Сколько лет годен годовой замер дипломатии. Сессия ГА ООН проходит раз в год,
 # файл выходит с задержкой, поэтому «позапрошлый год» — нормальный свежий срок.
@@ -200,7 +212,8 @@ def bucket(events: list[dict]) -> dict[date, dict]:
 def raw_values(buckets: dict[date, dict], day: date,
                global_mentions: dict[date, float],
                covered: dict[str, tuple[date, date] | None] | None = None,
-               unvotes: tuple[int, float] | None = None
+               unvotes: tuple[int, float] | None = None,
+               air: dict[date, float] | None = None
                ) -> dict[str, float | None]:
     """Значения индикаторов на день. None = данных нет, а не ноль.
 
@@ -269,6 +282,12 @@ def raw_values(buckets: dict[date, dict], day: date,
         # динамики он не даёт и не должен — он различает ПАРЫ между собой.
         "dip_distance": (unvotes[1] if unvotes
                          and day.year - unvotes[0] <= UNVOTES_MAX_AGE_Y else None),
+        # Среднее число значимых военных бортов в зоне за окно. None означает,
+        # что зона не наблюдается сетью, а НЕ что авиации нет: приёмники стоят
+        # неравномерно, и над Чёрным морем их почти нет. Путать отсутствие
+        # наблюдения с тишиной здесь опаснее всего — именно там, где вещать
+        # перестают, обычно и происходит интересное.
+        "mil_air": _air_value(air, day),
     }
     for key, block in INDICATORS.items():
         span = (covered or {}).get(block)
@@ -280,6 +299,15 @@ def raw_values(buckets: dict[date, dict], day: date,
 # --------------------------------------------------------------------------
 # Фаза
 # --------------------------------------------------------------------------
+def _air_value(air: dict[date, float] | None, day: date) -> float | None:
+    """Среднесуточное число значимых бортов за окно WIN_AIR."""
+    if not air:
+        return None
+    vals = [air[day - timedelta(days=i)] for i in range(WIN_AIR)
+            if (day - timedelta(days=i)) in air]
+    return (sum(vals) / len(vals)) if vals else None
+
+
 def phase_rule(fat_365: int, force_365: int, cameo_30: dict[str, int]) -> tuple[int, str]:
     """Фаза по правилам раздела 2 методологии. Возвращает (фаза, основание).
 
@@ -380,6 +408,33 @@ def compute(con, *, days: int = SERIES_DAYS, today: date | None = None) -> dict:
 
     sanc_channel = sanctions.dyads_with_channel()
 
+    # Военная авиация: почасовые снимки сворачиваются в суточное среднее.
+    # Именно среднее, а не сумма: сутки с двадцатью снимками и сутки с пятью
+    # (сеть моргнула) должны быть сравнимы, иначе пропуск наблюдения читался
+    # бы как спад активности.
+    air_by_dyad: dict[str, dict[date, float]] = {}
+    air_hours: dict[str, int] = {}
+    seen_hours: dict[str, int] = {}
+    for r in con.execute("SELECT series_key, as_of, value FROM series "
+                         "WHERE source='adsb' ORDER BY as_of"):
+        kind, _, did = str(r["series_key"]).partition(":")
+        d = _d(str(r["as_of"])[:10])
+        if not d or not did:
+            continue
+        if kind == "seen":
+            # Ряд «сколько бортов вообще видно» нужен ровно для одного: понять,
+            # наблюдается ли зона. Без него ноль значимых бортов над Тайванем
+            # выглядел бы измеренным спокойствием, а не отсутствием приёмников.
+            if r["value"]:
+                seen_hours[did] = seen_hours.get(did, 0) + 1
+            continue
+        if kind != "mil":
+            continue
+        bucket_d = air_by_dyad.setdefault(did, {})
+        prev = bucket_d.get(d)
+        bucket_d[d] = float(r["value"]) if prev is None else (prev + float(r["value"])) / 2
+        air_hours[did] = air_hours.get(did, 0) + 1
+
     # Годовой замер дипломатии: {dyad_id: (год, расстояние)}. Берём последний год.
     unvotes: dict[str, tuple[int, float]] = {}
     for r in con.execute("SELECT series_key, as_of, value FROM series WHERE source='unvotes'"):
@@ -423,7 +478,19 @@ def compute(con, *, days: int = SERIES_DAYS, today: date | None = None) -> dict:
         # (Косово не член ООН) или с протухшим замером блок остаётся пустым.
         uv = unvotes.get(d["dyad_id"])
         cov_d["diplomatic"] = covered.get("diplomatic") if uv else None
-        raw[d["dyad_id"]] = {day: raw_values(b, day, global_mentions, cov_d, uv)
+
+        # Военный блок — тоже подиадный, и по двум условиям сразу: зона должна
+        # НАБЛЮДАТЬСЯ (сеть видит там хоть что-то) и наблюдаться достаточно
+        # долго, чтобы у неё была норма. Без первого условия ноль над
+        # Тайваньским проливом стал бы измеренной тишиной; без второго медиана
+        # считалась бы по трём часам и означала бы случайность.
+        did = d["dyad_id"]
+        enough = (air_hours.get(did, 0) >= AIR_MIN_HOURS
+                  and seen_hours.get(did, 0) >= AIR_MIN_HOURS // 4)
+        air = air_by_dyad.get(did) if enough else None
+        cov_d["military"] = (min(air), max(air)) if air else None
+
+        raw[d["dyad_id"]] = {day: raw_values(b, day, global_mentions, cov_d, uv, air)
                              for day in all_days}
 
     # 3. Опорные величины. Хвост в REF_LAG дней отрезан: иначе сегодняшний
