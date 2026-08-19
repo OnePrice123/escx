@@ -90,6 +90,10 @@ function setMode(next) {
   $('#password').setAttribute('autocomplete', reg ? 'new-password' : 'current-password');
   $('#authMsg').hidden = true;
   $('#forgotBtn').hidden = reg;
+  // Согласие с документами показываем только при регистрации: при входе
+  // человек согласился уже тогда, и повторять — лишний шум на экране.
+  const consent = $('#authConsent');
+  if (consent) consent.hidden = !reg;
 }
 
 $('#modeBtn')?.addEventListener('click', () => setMode(mode === 'register' ? 'signin' : 'register'));

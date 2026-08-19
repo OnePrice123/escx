@@ -1280,3 +1280,49 @@ body {
   .archrow__meta { grid-column: 1 / -1; }
   .archrow__n { display: none; }
 }
+
+/* ── правовые документы ───────────────────────────────────────────
+   Узкая колонка и крупный интерлиньяж: это текст, который читают
+   подряд, а не просматривают. */
+.doc { max-width: 720px; padding-block: clamp(28px, 5vw, 64px); }
+.doc__title { margin: 0 0 10px; font: 400 clamp(26px, 3.6vw, 38px)/1.15 var(--serif); }
+.doc__meta { margin: 20px 0 0; padding: 12px 0; font-size: 13px; line-height: 1.8;
+             color: var(--ink-3); border-top: 1px solid var(--hair-soft);
+             border-bottom: 1px solid var(--hair-soft); }
+.doc__meta b { color: var(--ink-2); font-weight: 500; }
+.doc__sec { margin: clamp(30px, 5vw, 48px) 0 0; }
+.doc__sec .h2 { margin: 0 0 12px; }
+.doc__sec .h3 { margin: 24px 0 8px; }
+.doc__sec p { margin: 0 0 12px; font-size: 15px; line-height: 1.75; color: var(--ink-2); }
+.doc__sec p b { color: var(--ink); font-weight: 500; }
+.doc__list { margin: 0 0 12px; padding-left: 20px; }
+.doc__list li { margin: 0 0 8px; font-size: 15px; line-height: 1.75; color: var(--ink-2); }
+.doc__list li b { color: var(--ink); font-weight: 500; }
+.doc__note { font-size: 13.5px; color: var(--ink-3); padding-left: 12px;
+             border-left: 2px solid var(--hair); }
+.doc__table { width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 13.5px; }
+.doc__table th { text-align: start; padding: 0 12px 8px 0; font: 600 10px/1 var(--sans);
+                 letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.doc__table td { padding: 10px 12px 10px 0; border-top: 1px solid var(--hair-soft);
+                 color: var(--ink-2); vertical-align: baseline; line-height: 1.6; }
+.doc__table td:last-child { color: var(--ink-3); white-space: nowrap; }
+@media (max-width: 620px) {
+  .doc__table, .doc__table tbody, .doc__table tr, .doc__table td { display: block; width: 100%; }
+  .doc__table thead { display: none; }
+  .doc__table tr { padding: 10px 0; border-top: 1px solid var(--hair-soft); }
+  .doc__table td { border: 0; padding: 2px 0; }
+  .doc__table td:last-child { white-space: normal; font-size: 12.5px; }
+}
+.doc code { font: 12.5px ui-monospace, Consolas, monospace; background: var(--paper-raised);
+            border: 1px solid var(--hair); border-radius: 3px; padding: 1px 5px; }
+.doc a { color: var(--ink-2); text-decoration: underline;
+         text-decoration-color: var(--hair); text-underline-offset: 3px; }
+.doc a:hover { color: var(--ink); text-decoration-color: var(--ink-3); }
+.doc__foot { margin: 48px 0 0; padding-top: 22px; border-top: 1px solid var(--hair-soft);
+             display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* Правовые ссылки в подвале витрины. */
+.foot__legal { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-3); }
+.foot__legal a { color: var(--ink-3); text-decoration: underline;
+                 text-decoration-color: var(--hair); text-underline-offset: 3px; }
+.foot__legal a:hover { color: var(--ink); }

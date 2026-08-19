@@ -577,6 +577,16 @@ def build(demo_mode: bool = False) -> dict:
     if p_dyad.exists():
         shutil.copy2(p_dyad, SITE / "dyad.html")
 
+    # Правовые документы. Обязаны попадать в сборку всегда, в том числе в
+    # демо-режиме: ссылка из подвала на несуществующую страницу — худший вид
+    # отсутствия политики конфиденциальности, чем её честное отсутствие.
+    for f in ("privacy.html", "terms.html"):
+        p = ROOT / f
+        if p.exists():
+            shutil.copy2(p, SITE / f)
+        else:
+            print(f"  нет {f} — в подвале останется битая ссылка", file=sys.stderr)
+
     for src, dst in [("design/styleguide.html", "styleguide.html"),
                      ("design/demo.html",      "design-demo.html"),
                      ("web/schema.html",       "schema.html")]:

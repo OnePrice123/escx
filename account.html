@@ -63,6 +63,9 @@
       <button class="acc__link" type="button" id="forgotBtn">Забыли пароль?</button>
     </div>
     <p class="acc__fine" id="authFine">Пароль — не короче 10 символов. Длина надёжнее, чем набор значков: «корова-на-льду» крепче, чем «Pa$$w0rd».</p>
+    <!-- Согласие при регистрации. Показывается только в режиме регистрации:
+         при входе человек соглашался уже тогда, и повторять — шум. -->
+    <p class="acc__fine" id="authConsent" hidden>Заводя кабинет, вы принимаете <a href="terms.html">условия использования</a> и <a href="privacy.html">политику конфиденциальности</a>. Мы храним адрес почты и хэш пароля — самого пароля у нас нет.</p>
   </section>
 
   <!-- Зарегистрировался, но адрес не подтверждён. Отдельный экран, а не
@@ -171,6 +174,16 @@
   </section>
 
 </main>
+
+<footer class="foot">
+  <div class="wrap foot__in">
+    <p class="foot__legal">© 2026 brink.watch
+      <span class="sep">·</span> <a href="privacy.html">Политика конфиденциальности</a>
+      <span class="sep">·</span> <a href="terms.html">Условия использования</a>
+      <span class="sep">·</span> <a href="mailto:support@brink.watch">support@brink.watch</a>
+    </p>
+  </div>
+</footer>
 
 <script src="assets/account.js?v=30"></script>
 </body>
