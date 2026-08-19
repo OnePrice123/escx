@@ -187,6 +187,29 @@ function drawNeedles() {
 
 /* ── показания ─────────────────────────── */
 
+/* Завершённые конфликты. Не в ленте и без числа: у них нет накала, и рисовать
+   рядом с ними прочерк значило бы намекнуть, что число потерялось. Вместо
+   числа — период, за который собраны события, и объём собранного. */
+function paintArchive() {
+  const box = $('#archive'), list = $('#archList');
+  const items = (typeof LIVE !== 'undefined' && LIVE.archive) || [];
+  if (!box || !list) return;
+  if (!items.length) { box.hidden = true; return; }
+
+  list.innerHTML = items.map(a => {
+    const years = a.events_from && a.events_to
+      ? `${String(a.events_from).slice(0, 4)}—${String(a.events_to).slice(0, 4)}` : '';
+    return `
+      <li class="archrow">
+        <a class="archrow__name" href="dyad.html?id=${encodeURIComponent(String(a.dyad_id).toUpperCase())}">${a.name || a.dyad_id}</a>
+        <span class="archrow__meta">${[a.region, a.disputed].filter(Boolean).join(' · ')}</span>
+        <span class="archrow__years num">${years}</span>
+        <span class="archrow__n num">${a.events_total != null ? a.events_total + ' записей' : ''}</span>
+      </li>`;
+  }).join('');
+  box.hidden = false;
+}
+
 function paintReadout() {
   const c = cur();
   const roll = isTheatre() ? theatreRollup(c) : null;
@@ -1054,6 +1077,7 @@ function renderAll() {
 
   paintWorld();
   paintTop();
+  paintArchive();
   paintMovers();
 
   drawGauge();

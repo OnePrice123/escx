@@ -84,6 +84,71 @@ def _bucket(values: list[int], size: int) -> list[int]:
     return out
 
 
+def archive(con) -> list[dict]:
+    """Завершённые конфликты: пары со статусом не active.
+
+    Инвариант 6a требует переводить закончившийся конфликт в dormant, а не
+    удалять: история нужна для базовых ставок. База это исполняет, а витрина
+    до сих пор — нет: from_db берёт только active, и пара исчезала с сайта
+    целиком вместе со своей историей.
+
+    Накала и ступени у таких пар НЕТ, и это не упущение витрины: compute
+    считает только активные, так что в heat_daily по ним ноль строк.
+    Досчитывать задним числом нельзя без последствий — общая опора для
+    масштаба «всё время» берётся по всем парам сразу, и появление новой
+    истории сдвинуло бы числа у действующих пар. Поэтому здесь только то,
+    что есть: реестровая запись и события источников.
+    """
+    out = []
+    try:
+        rows = con.execute(
+            "SELECT dyad_id, name, region, side_a, side_b, dyad_type, disputed, "
+            "       since, status FROM dyads WHERE status <> 'active' "
+            "ORDER BY name").fetchall()
+    except sqlite3.Error:
+        return out
+
+    for r in rows:
+        d = dict(r)
+        d["name"] = d.get("name") or f'{d["side_a"]} — {d["side_b"]}'
+        try:
+            s = con.execute(
+                "SELECT COUNT(*) n, MIN(occurred_at) a, MAX(occurred_at) b "
+                "FROM raw_events WHERE dyad_id=?", (d["dyad_id"],)).fetchone()
+            d["events_total"] = s["n"] or 0
+            d["events_from"] = str(s["a"])[:10] if s["a"] else None
+            d["events_to"] = str(s["b"])[:10] if s["b"] else None
+            d["sources"] = {x["source"]: x["n"] for x in con.execute(
+                "SELECT source, COUNT(*) n FROM raw_events WHERE dyad_id=? "
+                "GROUP BY source ORDER BY n DESC", (d["dyad_id"],))}
+        except sqlite3.Error:
+            d["events_total"] = 0
+        out.append(d)
+    return out
+
+
+def _events_only(con, dyad_id: str, out: dict) -> dict:
+    """Только исходные события. Для пар, по которым расчёта не было."""
+    try:
+        evs = []
+        for r in con.execute(
+                "SELECT occurred_at, source, event_type, cameo_code, fatalities, payload "
+                "FROM raw_events WHERE dyad_id=? ORDER BY occurred_at DESC LIMIT ?",
+                (dyad_id, EVENTS_SHOWN)):
+            url = None
+            try:
+                url = (json.loads(r["payload"] or "{}") or {}).get("url")
+            except (ValueError, TypeError):
+                pass
+            evs.append({"day": str(r["occurred_at"])[:10], "source": r["source"],
+                        "type": r["event_type"], "cameo": r["cameo_code"],
+                        "fatalities": r["fatalities"], "url": url})
+        out["events"] = evs
+    except sqlite3.Error:
+        out["events"] = []
+    return out
+
+
 def dyad_detail(con, dyad_id: str, day: str) -> dict:
     """Раскрытие пары до исходных фактов: фазы, индикаторы, события.
 
@@ -120,6 +185,13 @@ def dyad_detail(con, dyad_id: str, day: str) -> dict:
 
     # Разбор накала. Блок без единого свежего индикатора помечается
     # неизмеренным, а не нулевым: ноль означал бы «проверили, там пусто».
+    #
+    # У завершённой пары дня расчёта нет вовсе, и разбор пропускается целиком:
+    # пять пустых блоков читались бы как «измерено 0 из 5», то есть как
+    # неудачное измерение, тогда как измерения не было.
+    if not day:
+        out["blocks"] = []
+        return _events_only(con, dyad_id, out)
     try:
         have = {r["indicator_key"]: r for r in con.execute(
             "SELECT indicator_key, raw_value, z_score, fresh FROM indicator_daily "
@@ -143,25 +215,7 @@ def dyad_detail(con, dyad_id: str, day: str) -> dict:
 
     # Исходные события. Ссылка на статью — то самое место, где читатель может
     # проверить нас, а не поверить.
-    try:
-        evs = []
-        for r in con.execute(
-                "SELECT occurred_at, source, event_type, cameo_code, fatalities, payload "
-                "FROM raw_events WHERE dyad_id=? ORDER BY occurred_at DESC LIMIT ?",
-                (dyad_id, EVENTS_SHOWN)):
-            url = None
-            try:
-                url = (json.loads(r["payload"] or "{}") or {}).get("url")
-            except (ValueError, TypeError):
-                pass
-            evs.append({"day": str(r["occurred_at"])[:10], "source": r["source"],
-                        "type": r["event_type"], "cameo": r["cameo_code"],
-                        "fatalities": r["fatalities"], "url": url})
-        out["events"] = evs
-    except sqlite3.Error:
-        out["events"] = []
-
-    return out
+    return _events_only(con, dyad_id, out)
 
 
 def from_db(path: Path) -> dict | None:
@@ -226,6 +280,13 @@ def from_db(path: Path) -> dict | None:
         # двадцать пар утяжелили бы главную страницу впятеро ради данных,
         # которые нужны только тому, кто открыл конкретную пару.
         details = {r["dyad_id"]: dyad_detail(con, r["dyad_id"], r["day"]) for r in rows}
+
+        # Завершённые конфликты. В ленту они не выводятся — инвариант 6a
+        # требует показывать там только active, — но со страницы пары
+        # доступны: их события и есть та история, ради которой пару не удаляют.
+        arch = archive(con)
+        for a in arch:
+            details[a["dyad_id"]] = dyad_detail(con, a["dyad_id"], "")
     except sqlite3.OperationalError:
         return None
     finally:
@@ -279,7 +340,7 @@ def from_db(path: Path) -> dict | None:
         d.pop("weight", None)
     dyads.sort(key=lambda x: (-(x["h_abs"] or 0), x["name"]))
 
-    return {"dyads": dyads, "source": "db", "details": details,
+    return {"dyads": dyads, "source": "db", "details": details, "archive": arch,
             "global": global_index(dyads, shares),
             "registry_total": len(dyads)}
 
@@ -490,8 +551,10 @@ def build(demo_mode: bool = False) -> dict:
     (SITE / "data" / "index.json").write_text(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
-    # по диаде — отдельный файл: страница тянет только то, что показывает
-    for d in data["dyads"]:
+    # по диаде — отдельный файл: страница тянет только то, что показывает.
+    # Завершённые пары получают такой же файл: в ленте их нет, но страница
+    # пары для них открывается — ради их истории пару и не удаляют.
+    for d in list(data["dyads"]) + list(data.get("archive") or []):
         (SITE / "data" / f"{d['dyad_id']}.json").write_text(
             json.dumps({**d, **details.get(d["dyad_id"], {}), "built_at": stamp},
                        ensure_ascii=False), encoding="utf-8")

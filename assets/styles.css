@@ -1257,3 +1257,26 @@ body {
 .deep a { color: var(--ink-2); text-decoration: underline;
           text-decoration-color: var(--hair); text-underline-offset: 3px; }
 .deep a:hover { color: var(--ink); text-decoration-color: var(--ink-3); }
+
+/* ── завершённые конфликты ────────────────────────────────────────
+   Отдельный список под лентой: без числа, потому что накала у них нет. */
+.arch { margin: 40px 0 0; padding-top: 26px; border-top: 1px solid var(--hair-soft); }
+.arch .h3 { margin: 0 0 6px; }
+.arch .lede { max-width: 62ch; }
+.archlist { list-style: none; margin: 20px 0 0; padding: 0; }
+.archrow {
+  display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1.4fr) auto auto;
+  gap: 16px; align-items: baseline; padding: 12px 0;
+  border-top: 1px solid var(--hair-soft);
+}
+.archrow__name { font-size: 15px; color: var(--ink); text-decoration: none; }
+.archrow__name:hover { text-decoration: underline; text-decoration-color: var(--ink-3);
+                       text-underline-offset: 3px; }
+.archrow__meta { font-size: 13px; color: var(--ink-3); }
+.archrow__years, .archrow__n { font-size: 12.5px; color: var(--ink-3); text-align: end;
+                               white-space: nowrap; }
+@media (max-width: 700px) {
+  .archrow { grid-template-columns: minmax(0,1fr) auto; gap: 4px 12px; }
+  .archrow__meta { grid-column: 1 / -1; }
+  .archrow__n { display: none; }
+}

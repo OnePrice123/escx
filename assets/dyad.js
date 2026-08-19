@@ -70,7 +70,42 @@ function cameoName(type, code) {
 
 /* ------------------------------------------------------------------ шапка */
 
+const STATUS_RU = { dormant: 'завершён', resolved: 'разрешён' };
+
+/**
+ * Шапка завершённого конфликта.
+ *
+ * Накала и ступени у него нет — и это не пропуск витрины: расчёт по спящим
+ * парам не ведётся вовсе. Показать здесь прочерк на месте числа значило бы
+ * намекнуть, что число должно быть и потерялось. Поэтому вместо накала —
+ * период и объём собранного, а вместо ступени — статус.
+ */
+function paintArchived(d) {
+  document.title = `${d.name || d.dyad_id} — brink.watch`;
+  $('#dRegion').textContent = [d.region, 'завершённый конфликт'].filter(Boolean).join(' · ');
+  $('#dName').textContent = d.name || d.dyad_id;
+  $('#dDisputed').textContent = d.disputed ? `Предмет спора: ${d.disputed}.` : '';
+
+  const years = d.events_from && d.events_to
+    ? `${String(d.events_from).slice(0, 4)}—${String(d.events_to).slice(0, 4)}` : '—';
+  const src = Object.entries(d.sources || {})
+    .map(([k, n]) => `${SOURCE_RU[k] || k} ${n}`).join(', ');
+
+  $('.dhead__nums').innerHTML = `
+    <div class="dnum"><span class="dnum__v">${esc(STATUS_RU[d.status] || d.status || '—')}</span><span class="dnum__k">статус</span></div>
+    <div class="dnum"><span class="dnum__v num">${esc(years)}</span><span class="dnum__k">события за</span></div>
+    <div class="dnum"><span class="dnum__v num">${d.events_total != null ? d.events_total : '—'}</span><span class="dnum__k">записей источников</span></div>
+    ${d.since ? `<div class="dnum"><span class="dnum__v num">${d.since}</span><span class="dnum__k">начало спора</span></div>` : ''}`;
+
+  $('#dBasis').textContent =
+    'Накал и ступень по этой паре не считаются: расчёт ведётся только по действующим конфликтам. '
+    + 'Из реестра она не удалена намеренно — её история нужна как база сравнения для действующих пар. '
+    + (src ? `Собрано: ${src}.` : '');
+}
+
 function paintHead(d) {
+  if (d.status && d.status !== 'active') return paintArchived(d);
+
   document.title = `${d.name || d.dyad_id} — brink.watch`;
   $('#dRegion').textContent = d.region || '';
   $('#dName').textContent = d.name || d.dyad_id;

@@ -144,6 +144,11 @@ function applyIndex(doc) {
   LIVE.source = doc.source || 'registry';
   LIVE.registryTotal = doc.registry_total ?? dyads.length;
   LIVE.methodVersion = doc.method_version || null;
+  /* Завершённые конфликты идут отдельным списком, а не в CONFLICTS: накала
+     у них нет, и попади они в ленту — сортировка по горячему поставила бы их
+     ниже всех, где они читались бы как «самые спокойные». Это разные вещи:
+     не измерено и измерено спокойным. */
+  LIVE.archive = Array.isArray(doc.archive) ? doc.archive : [];
 
   HAS.axes = LIVE.globalAxes.length > 0;
   HAS.ledger = false;
