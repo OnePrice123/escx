@@ -191,6 +191,23 @@ db.set_watermark(con, "gdelt_export", "20260804031500")
 check("метка сохраняется", db.get_watermark(con, "gdelt_export") == "20260804031500")
 con.close(); os.unlink(tmp)
 
+print("\nUCDP: адреса кандидатских файлов")
+from escx.sources import ucdp as U
+# Год в имени файла ДВУЗНАЧНЫЙ. Стоял четырёхзначный: адрес отдавал 404,
+# HTTP-слой на 404 намеренно не падает, и pull-candidate возвращал ноль
+# событий каждую ночь. Кинетика не измерялась ни у одной пары с января,
+# и выглядело это как «в мире тихо» — ошибка, которая не падает и не спорит.
+_urls = U.candidate_urls(2026, 6)
+check("год в адресе двузначный", all("v26_" in u for u in _urls), _urls[0])
+check("четырёхзначного года нет", not any("v2026" in u for u in _urls))
+check("накопительный файл идёт первым",
+      _urls[0].endswith("GEDEvent_v26_01_26_06.csv"), _urls[0])
+check("месячный остаётся запасным",
+      _urls[1].endswith("GEDEvent_v26_0_6.csv"), _urls[1])
+check("месяц дополняется нулём в накопительном",
+      U.candidate_urls(2026, 3)[0].endswith("v26_01_26_03.csv"))
+check("смена века не ломает имя", U.candidate_urls(2100, 5)[0].count("v0_") == 0)
+
 print("\nADS-B: наблюдаемость зоны")
 from escx.sources import adsb as A
 # Наблюдаемость мерится ВСЕМ трафиком, а не военным. Пока её считали по

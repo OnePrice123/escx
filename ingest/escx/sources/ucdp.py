@@ -39,7 +39,31 @@ VERSION = "26.1"
 
 # Готовые выгрузки. Номер в имени файла — версия без точки: 26.1 -> ged261.
 BULK_GED = "https://ucdp.uu.se/downloads/ged/ged{v}-csv.zip"
-BULK_CANDIDATE = "https://ucdp.uu.se/downloads/candidateged/GEDEvent_v{y}_0_{m}.csv"
+# Кандидатские файлы. ГОД ДВУЗНАЧНЫЙ — v26, а не v2026.
+#
+# Здесь стоял четырёхзначный, и это ровно та ошибка, о которой предупреждает
+# шапка модуля: адрес отдавал 404, HTTP-слой на 404 намеренно не падает, и
+# pull-candidate возвращала ноль событий. Выглядело как «в мире тихо», а на
+# деле кинетика не измерялась НИ У ОДНОЙ пары с января 2026 года.
+#
+# Два вида файлов: месячный — за один месяц, накопительный — с января по
+# указанный месяц одним куском. Берётся накопительный: нам нужен весь текущий
+# год, а не последние тридцать дней.
+BULK_CANDIDATE = "https://ucdp.uu.se/downloads/candidateged/GEDEvent_v{yy}_0_{m}.csv"
+BULK_CANDIDATE_YTD = ("https://ucdp.uu.se/downloads/candidateged/"
+                      "GEDEvent_v{yy}_01_{yy}_{m:02d}.csv")
+
+
+def candidate_urls(year: int, month: int) -> tuple[str, ...]:
+    """Адреса кандидатских файлов в порядке предпочтения: сперва накопительный.
+
+    Год дополняется нулём: 2005 -> «05», 2100 -> «00». Без этого остатка от
+    деления на сто не хватает — он даёт «5» и «0», то есть снова адрес, которого
+    не существует, и снова молчаливый ноль событий вместо ошибки.
+    """
+    yy = f"{year % 100:02d}"
+    return (BULK_CANDIDATE_YTD.format(yy=yy, m=month),
+            BULK_CANDIDATE.format(yy=yy, m=month))
 
 # Версии GED, которые пробуем по очереди, если основная не отвечает.
 # Зачем это нужно: датасет выходит раз в год, номер версии меняется, а
@@ -111,7 +135,11 @@ def iter_candidate(year: int, month: int) -> Iterator[dict]:
     Кандидатские данные пересматриваются задним числом, поэтому в базе они
     лежат под source='ucdp_candidate' и никогда не смешиваются с финальными.
     """
-    blob = get(BULK_CANDIDATE.format(y=year, m=month), use_cache=True, timeout=300)
+    blob = b""
+    for url in candidate_urls(year, month):
+        blob = get(url, use_cache=True, timeout=300)
+        if blob:
+            break
     if not blob:
         return
     text = io.StringIO(blob.decode("utf-8-sig", errors="replace"))
@@ -120,10 +148,16 @@ def iter_candidate(year: int, month: int) -> Iterator[dict]:
 
 
 def latest_candidate(year: int) -> int | None:
-    """Номер последнего доступного месячного файла кандидатов. None — нет ни одного."""
+    """Номер последнего доступного месяца кандидатов. None — нет ни одного.
+
+    Идём от декабря к январю: кандидатские выходят с задержкой, и в августе
+    последним доступным может оказаться июнь. Это нормально и не ошибка —
+    предварительные данные всегда отстают от календаря на месяц-другой.
+    """
     for m in range(12, 0, -1):
-        if get(BULK_CANDIDATE.format(y=year, m=m), use_cache=True, timeout=300, retries=1):
-            return m
+        for url in candidate_urls(year, m):
+            if get(url, use_cache=True, timeout=300, retries=1):
+                return m
     return None
 
 
