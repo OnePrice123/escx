@@ -598,11 +598,60 @@ def build(demo_mode: bool = False) -> dict:
     # и выбросит всё, что начинается с подчёркивания
     (SITE / ".nojekyll").write_text("", encoding="utf-8")
     (SITE / "robots.txt").write_text(
-        "User-agent: *\nAllow: /\n", encoding="utf-8")
+        "User-agent: *\nAllow: /\n"
+        f"Sitemap: {SITE_URL}/sitemap.xml\n", encoding="utf-8")
+
+    write_sitemap(data)
 
     n = sum(1 for _ in SITE.rglob("*") if _.is_file())
     size = sum(f.stat().st_size for f in SITE.rglob("*") if f.is_file())
     return {"files": n, "bytes": size, "dyads": len(data["dyads"]), "source": data["source"]}
+
+
+SITE_URL = "https://brink.watch"
+
+# Страницы, которых в карте быть не должно, и причины у каждой разные:
+# кабинет закрыт от индексации своим noindex, витрина дизайна и схема — это
+# рабочие материалы, а не содержание сайта.
+SITEMAP_SKIP = {"account.html", "styleguide.html", "design-demo.html", "dyad.html"}
+
+
+def write_sitemap(data: dict) -> int:
+    """Карта сайта.
+
+    До сих пор её не было вовсе: robots.txt писался, sitemap.xml — нет, и
+    запрос по этому адресу отдавал главную страницу, потому что Cloudflare
+    подставляет её вместо 404. То есть поисковик о карте не знал и не мог
+    узнать, что у сайта есть страницы пар.
+
+    Именно они здесь и главное: два десятка страниц с уникальным текстом,
+    историей и событиями. Ссылки на них есть только с главной, а это самый
+    медленный путь к индексации.
+
+    Шаблон dyad.html в карту не идёт: сам по себе, без параметра, он пустой.
+    В карту идут его конкретные адреса — по одному на пару, включая
+    завершённые: их история и есть то, ради чего пары не удаляются.
+    """
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    urls: list[tuple[str, str]] = [(SITE_URL + "/", "daily")]
+
+    for f in sorted(SITE.glob("*.html")):
+        if f.name in SITEMAP_SKIP or f.name == "index.html":
+            continue
+        urls.append((f"{SITE_URL}/{f.name}", "yearly"))
+
+    for d in list(data.get("dyads") or []) + list(data.get("archive") or []):
+        urls.append((f"{SITE_URL}/dyad.html?id={d['dyad_id']}", "daily"))
+
+    body = "\n".join(
+        f"  <url><loc>{u}</loc><lastmod>{day}</lastmod>"
+        f"<changefreq>{freq}</changefreq></url>"
+        for u, freq in urls)
+    (SITE / "sitemap.xml").write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{body}\n</urlset>\n", encoding="utf-8")
+    return len(urls)
 
 
 def copy_to_root() -> int:
