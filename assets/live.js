@@ -104,7 +104,10 @@ function toConflict(d, builtAt) {
     sourcesLive: null,
     eventsLast24h: d.events_30d ?? null,
     axes: [],
-    divergence: null,
+    /* Слова и дела. Приходит из пайплайна как две шкалы 0–100 и история
+       разрывов; null, если хоть одна сторона измерена меньше чем наполовину —
+       разрыв с недоизмеренной стороной не осторожен, он ложен. */
+    divergence: d.divergence || null,
     chokepoints: [],
     factors: [],
     milestones: [],
@@ -152,7 +155,11 @@ function applyIndex(doc) {
 
   HAS.axes = LIVE.globalAxes.length > 0;
   HAS.ledger = false;
-  HAS.divergence = false;
+  /* Раздел появляется, только если разрыв посчитан хотя бы у одной пары.
+     Пока кинетика отстаёт от календаря, у части пар «дела» недоизмерены и
+     разрыва нет — это нормально и показывается отсутствием раздела, а не
+     нулём в нём. */
+  HAS.divergence = computed.some(d => d.divergence);
   HAS.matrix = false;
   HAS.chokepoints = false;
   HAS.calibration = false;

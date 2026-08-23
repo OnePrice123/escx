@@ -289,6 +289,33 @@ check("название доехало до базы",
       con.execute("SELECT name FROM dyads WHERE dyad_id='IND-PAK'").fetchone()["name"]
       == "Индия — Пакистан")
 
+print("\nСлова и дела: индекс расхождения")
+from escx.indicators import side_heat, WORDS_BLOCKS, DEEDS_BLOCKS, MIN_SIDE_SHARE
+_all = {"kinetic": 2.0, "military": 0.0, "economic": 0.0,
+        "diplomatic": 0.0, "informational": -1.0}
+_w = side_heat(_all, WORDS_BLOCKS)
+_d = side_heat(_all, DEEDS_BLOCKS)
+check("слова и дела считаются по своим блокам", _w is not None and _d is not None)
+check("дела жёстче слов при боях без огласки", _d > _w, f"{_d:.1f} против {_w:.1f}")
+check("слова ниже нормы при отрицательном z", _w < 50, _w)
+
+# Веса перенормируются внутри стороны: у инфополя вес 0.15, и без
+# перенормировки риторика упиралась бы в 50 при любом накале.
+_hot = side_heat({"informational": 3.0}, WORDS_BLOCKS)
+check("риторика доходит до верха шкалы", _hot > 80, _hot)
+
+# Сторона, измеренная меньше чем наполовину, не сторона. Поймано на живых
+# данных: без этого порога Россия с Украиной получали ярлык «угрозы без дел»
+# посреди войны — потому что кинетика ещё не опубликована, и «дела»
+# схлопывались до одной дипломатии.
+check("одна дипломатия из четырёх блоков делами не считается",
+      side_heat({"diplomatic": 3.0}, DEEDS_BLOCKS) is None)
+check("кинетика с дипломатией уже считаются",
+      side_heat({"kinetic": 1.0, "diplomatic": 1.0}, DEEDS_BLOCKS) is not None)
+check("пустая сторона даёт None", side_heat({}, DEEDS_BLOCKS) is None)
+check("порог доли задан явно", 0 < MIN_SIDE_SHARE <= 1, MIN_SIDE_SHARE)
+
+
 print("\n" + "=" * 46)
 print(f"пройдено {ok}, провалено {fail}")
 print("=" * 46)

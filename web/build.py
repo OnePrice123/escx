@@ -149,6 +149,51 @@ def _events_only(con, dyad_id: str, out: dict) -> dict:
     return out
 
 
+DIV_HISTORY_DAYS = 30      # столько столбиков рисует график разрыва
+DIV_LAG_MAX = 21           # докуда искать запаздывание дел за словами
+
+
+def divergence_of(pairs: list[tuple[float, float]]) -> dict | None:
+    """Слова, дела, история разрывов и оценка запаздывания.
+
+    pairs — упорядоченные по дате (слова, дела); дни, где измерена не вся
+    сторона, в список не попадают вовсе.
+
+    Запаздывание ищется перебором сдвига: на сколько дней надо подвинуть слова
+    вперёд, чтобы они лучше всего совпали с делами. Это грубая оценка, и она
+    честно названа оценкой в подписи на витрине — но именно она отвечает на
+    вопрос, ради которого раздел затевался: риторика опережает действия или
+    догоняет их.
+    """
+    if len(pairs) < DIV_HISTORY_DAYS:
+        return None
+    words = [w for w, _ in pairs]
+    deeds = [d for _, d in pairs]
+
+    def corr(a: list[float], b: list[float]) -> float:
+        n = len(a)
+        if n < 30:
+            return 0.0
+        ma, mb = sum(a) / n, sum(b) / n
+        sa = sum((x - ma) ** 2 for x in a) ** 0.5
+        sb = sum((x - mb) ** 2 for x in b) ** 0.5
+        if not sa or not sb:
+            return 0.0
+        return sum((x - ma) * (y - mb) for x, y in zip(a, b)) / (sa * sb)
+
+    best_lag, best = 0, corr(words, deeds)
+    for lag in range(1, DIV_LAG_MAX + 1):
+        if len(words) - lag < 30:
+            break
+        c = corr(words[:-lag], deeds[lag:])
+        if c > best:
+            best_lag, best = lag, c
+
+    hist = [round(w - d) for w, d in pairs[-DIV_HISTORY_DAYS:]]
+    return {"words": round(words[-1], 1), "deeds": round(deeds[-1], 1),
+            "history": hist, "lagDays": best_lag}
+
+
 def dyad_detail(con, dyad_id: str, day: str) -> dict:
     """Раскрытие пары до исходных фактов: фазы, индикаторы, события.
 
@@ -258,10 +303,13 @@ def from_db(path: Path) -> dict | None:
 
         series: dict[str, list[int]] = {}
         coverage: dict[str, list[int]] = {}
-        for r in con.execute("SELECT dyad_id, day, h_abs, data_coverage FROM heat_daily "
-                             "ORDER BY dyad_id, day"):
+        div_pairs: dict[str, list[tuple[float, float]]] = {}
+        for r in con.execute("SELECT dyad_id, day, h_abs, data_coverage, h_words, h_deeds "
+                             "FROM heat_daily ORDER BY dyad_id, day"):
             series.setdefault(r["dyad_id"], []).append(round(r["h_abs"] or 0))
             coverage.setdefault(r["dyad_id"], []).append(round(r["data_coverage"] or 0))
+            if r["h_words"] is not None and r["h_deeds"] is not None:
+                div_pairs.setdefault(r["dyad_id"], []).append((r["h_words"], r["h_deeds"]))
 
         # Доли для весов последствий: последний известный срез по каждой стране.
         shares: dict[str, dict[str, float]] = {"pop": {}, "gdp": {}, "mil": {}}
@@ -330,6 +378,7 @@ def from_db(path: Path) -> dict | None:
             d["series_all_from"] = dm[0]
             d["coverage"]["all"] = [20] * len(dh)         # только кинетика
 
+        d["divergence"] = divergence_of(div_pairs.get(d["dyad_id"], []))
         d["events_30d"] = None if d.get("events_30d") is None else int(d["events_30d"])
         d["weight"] = wt.consequence(d["side_a"], d["side_b"], shares)
         dyads.append(d)

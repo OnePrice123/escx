@@ -30,7 +30,8 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
 from . import sanctions
-from .indicators import (BLOCK_WEIGHTS, MAD_K, Z_CAP, heat, robust_z, tempo,
+from .indicators import (BLOCK_WEIGHTS, MAD_K, Z_CAP, heat, side_heat,
+                         WORDS_BLOCKS, DEEDS_BLOCKS, robust_z, tempo,
                          winsorize)
 
 METHOD_VERSION = "0.3.1"
@@ -519,6 +520,8 @@ def compute(con, *, days: int = SERIES_DAYS, today: date | None = None) -> dict:
         b = buckets[did]
         h_abs_by_day: dict[date, float] = {}
         h_rel_by_day: dict[date, float] = {}
+        words_by_day: dict[date, float | None] = {}
+        deeds_by_day: dict[date, float | None] = {}
         cov_by_day: dict[date, float] = {}
 
         for day in all_days:
@@ -535,6 +538,12 @@ def compute(con, *, days: int = SERIES_DAYS, today: date | None = None) -> dict:
             block_rel = {k: sum(v) / len(v) for k, v in z_rel.items() if v}
             h_abs_by_day[day] = heat(block_abs)
             h_rel_by_day[day] = heat(block_rel)
+            # Слова и дела по отдельности — для индекса расхождения. Считаются
+            # здесь, а не в витрине: это те же z-оценки того же дня, и
+            # пересчитывать их второй раз в другом месте значит завести второй
+            # источник правды о том, насколько горячо.
+            words_by_day[day] = side_heat(block_abs, WORDS_BLOCKS)
+            deeds_by_day[day] = side_heat(block_abs, DEEDS_BLOCKS)
             # Покрытие считается по всем пяти блокам методологии, а не по тем,
             # что мы умеем: иначе оно всегда будет 100 и ничего не сообщит.
             cov_by_day[day] = 100.0 * len(block_abs) / len(ALL_BLOCKS)
@@ -572,7 +581,9 @@ def compute(con, *, days: int = SERIES_DAYS, today: date | None = None) -> dict:
                               round(h - h7, 2), round(h - h30, 2),
                               tp, round(cov_by_day[day], 1),
                               raw[did][day]["kin_events"],
-                              METHOD_VERSION, run_id))
+                              METHOD_VERSION, run_id,
+                              None if words_by_day[day] is None else round(words_by_day[day], 2),
+                              None if deeds_by_day[day] is None else round(deeds_by_day[day], 2)))
             for key in INDICATORS:
                 v = raw[did][day][key]
                 ind_rows.append((did, day.isoformat(), key, v,
@@ -594,7 +605,7 @@ def compute(con, *, days: int = SERIES_DAYS, today: date | None = None) -> dict:
     con.executemany(
         "INSERT OR REPLACE INTO heat_daily"
         "(dyad_id,day,h_abs,h_rel,delta_7,delta_30,tempo,data_coverage,events_30d,"
-        " method_version,run_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)", heat_rows)
+        " method_version,run_id,h_words,h_deeds) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", heat_rows)
     con.executemany(
         "INSERT INTO phase_log(dyad_id,changed_at,phase_from,phase_to,rule,method_version)"
         " VALUES(?,?,?,?,?,?)", phase_rows)

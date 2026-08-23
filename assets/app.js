@@ -407,9 +407,14 @@ function paintDivergence() {
   const owner = roll ? roll.divergenceOwner : null;
   const gap = d.words - d.deeds;
 
+  // gap = слова − дела. Отрицательный разрыв означает, что ДЕЛА жёстче слов,
+  // и подпись должна быть «слова мягче действий». Раньше ярлыки стояли
+  // наоборот: раздел ни разу не отрисовывался (HAS.divergence был выключен),
+  // и перестановку никто не видел. Тексты пояснений подтверждают знак:
+  // «угрозы звучат громче того, что подписывается» — это положительный разрыв.
   const state = gap <= -DIVERGENCE_BAND ? 'deeds' : gap >= DIVERGENCE_BAND ? 'words' : 'aligned';
-  const label = { deeds: 'divDeedsSofter', words: 'divWordsSofter', aligned: 'divAligned' }[state];
-  const why   = { deeds: 'divDeedsSofterWhy', words: 'divWordsSofterWhy', aligned: 'divAlignedWhy' }[state];
+  const label = { deeds: 'divWordsSofter', words: 'divDeedsSofter', aligned: 'divAligned' }[state];
+  const why   = { deeds: 'divWordsSofterWhy', words: 'divDeedsSofterWhy', aligned: 'divAlignedWhy' }[state];
   const color = { deeds: cssVar('--z5'), words: cssVar('--z1'), aligned: cssVar('--ink-3') }[state];
 
   $('#divVerdict').innerHTML = `

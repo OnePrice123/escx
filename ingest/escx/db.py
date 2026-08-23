@@ -163,6 +163,8 @@ MIGRATIONS = [
     ("dyads", "phase",       "INTEGER"),
     ("dyads", "phase_basis", "TEXT"),
     ("heat_daily", "events_30d", "REAL"),
+    ("heat_daily", "h_words",    "REAL"),
+    ("heat_daily", "h_deeds",    "REAL"),
 ]
 
 
