@@ -217,7 +217,7 @@ function paintReadout() {
   const weekAgo = roll ? roll.weekAgo : c.weekAgo;
   const monthAgo = roll ? roll.monthAgo : c.monthAgo;
 
-  $('#conflictName').textContent = loc(c, 'name');
+  $('#conflictName').textContent = c.kind === 'dyad' ? pairName(c) : loc(c, 'name');
 
   const zoneEl = $('#zoneNow');
   zoneEl.textContent = t(zoneOf(v).key);
@@ -270,7 +270,7 @@ function paintReadout() {
       + `<span class="sep">·</span>${t('updated')} ${upd}`;
   }
 
-  $('#readNote').textContent = roll ? `${t('theatreReadNote')} — ${loc(roll.hottest, 'short')}` : '';
+  $('#readNote').textContent = roll ? `${t('theatreReadNote')} — ${pairName(roll.hottest)}` : '';
   $('#readNote').hidden = !roll;
 
   paintRisk(c, roll);
@@ -935,6 +935,59 @@ let topExpanded = false;
    Накал меряет отклонение от нормы, а не тяжесть, и в одиночку ставил войну
    ниже словесного кризиса — просто потому, что война для своей пары привычна,
    а перепалка для своей нет. На вопрос «где хуже» отвечает ступень. */
+/* Трёхбуквенные коды реестра -> двухбуквенные, которые понимает Intl.
+   Таблица нужна ровно одна на все языки: названия стран знает браузер.
+   Косово (XKX) — не код ISO 3166, но Intl его отдаёт, потому что он есть
+   в CLDR как пользовательский; если однажды перестанет — сработает откат
+   на русское имя из витрины. */
+const A3_TO_A2 = {
+  AFG: 'AF', ARM: 'AM', AZE: 'AZ', CHN: 'CN', COD: 'CD', DZA: 'DZ', EGY: 'EG',
+  ERI: 'ER', ETH: 'ET', GRC: 'GR', GUY: 'GY', IND: 'IN', IRN: 'IR', ISR: 'IL',
+  JPN: 'JP', KHM: 'KH', KOR: 'KR', LBN: 'LB', MAR: 'MA', PAK: 'PK', PHL: 'PH',
+  PRK: 'KP', RUS: 'RU', RWA: 'RW', SRB: 'RS', THA: 'TH', TUR: 'TR', TWN: 'TW',
+  UKR: 'UA', USA: 'US', VEN: 'VE', XKX: 'XK', YEM: 'YE',
+};
+
+let _dn = null, _dnLang = null;
+function countryName(a3) {
+  const a2 = A3_TO_A2[a3];
+  if (!a2) return null;
+  try {
+    if (_dnLang !== LANG) {
+      _dn = new Intl.DisplayNames([LANG], { type: 'region' });
+      _dnLang = LANG;
+    }
+    const n = _dn.of(a2);
+    return n && n !== a2 ? n : null;
+  } catch (e) { return null; }
+}
+
+/* Имя пары на языке читателя. Откат на строку из витрины — если кода нет
+   в таблице или браузер не знает страну. */
+function pairName(c) {
+  const a = countryName(c.sideA), b = countryName(c.sideB);
+  return (a && b) ? `${a} — ${b}` : loc(c, 'short');
+}
+
+/* Название ступени берётся из словаря по НОМЕРУ, а не из данных.
+   Витрина переведена на шестнадцать языков, а пайплайн присылает готовую
+   русскую строку — немец и китаец видели бы кириллицу. Номер ступени
+   язык не имеет. Русская строка из данных остаётся последним запасом:
+   если словарь языка неполон, откат идёт на английский, потом на неё. */
+function phaseTitle(c) {
+  const list = (I18N[LANG] && I18N[LANG].phases) || (I18N.en && I18N.en.phases);
+  return (Array.isArray(list) && list[c.phase]) || c.phaseName || '';
+}
+
+/* Склонение после числа: 1 пара, 2 пары, 5 пар. Для языков без падежей
+   формы совпадают, и правило вырождается само. */
+function plural(n, one, few, many) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  return b === 1 ? one : many;
+}
+
 function conflictsByHeat() {
   return Object.values(CONFLICTS)
     .filter(c => Number.isFinite(c.now))
@@ -948,15 +1001,35 @@ function paintTop() {
 
   const shown = topExpanded ? list : list.slice(0, TOP_SHOWN);
 
+  /* Заголовок группы вставляется перед первой парой каждой ступени.
+     Без него список читался как ровная лента чисел, где война и словесный
+     кризис отличались только порядком — а порядок с первого взгляда не
+     виден. Ступень отвечает на «насколько плохо», и она обязана быть
+     видна как раздел, а не как подпись мелким шрифтом внутри строки. */
+  let lastPhase = null;
   box.innerHTML = shown.map(c => {
+    let head = '';
+    if (c.phase !== lastPhase) {
+      lastPhase = c.phase;
+      const n = list.filter(x => x.phase === c.phase).length;
+      head = `<li class="topgroup" aria-hidden="true">
+                <span class="topgroup__name">${phaseTitle(c)}</span>
+                <span class="topgroup__n num">${n}&nbsp;${plural(n,
+                  t('phaseGroupOne'), t('phaseGroupFew'), t('phaseGroupMany'))}</span>
+              </li>`;
+    }
+    return head + row(c);
+  }).join('');
+
+  function row(c) {
     const stale = Number.isFinite(c.coverage) && c.coverage < 40;
     const week = Number.isFinite(c.weekAgo) ? c.now - c.weekAgo : 0;
     return `
       <li class="toprow${stale ? ' is-thin' : ''}" style="--wash:${heatWash(c.now)}"
           data-id="${c.id}" tabindex="0" role="button">
         <div class="toprow__name">
-          <span class="toprow__title">${loc(c, 'short')}</span>
-          <span class="toprow__meta"><b class="toprow__phase">${c.phaseName || ''}</b>${c.region ? ' · ' + c.region : ''}</span>
+          <span class="toprow__title">${pairName(c)}</span>
+          <span class="toprow__meta">${c.region || ''}</span>
         </div>
         <div class="toprow__spark">${sparkWash(c.series || [], { id: 'tl-' + c.id, color: zoneColor(c.now), h: 26 })}</div>
         <div class="toprow__num num" style="color:${zoneColor(c.now)}">${fmt(c.now, 0)}</div>
@@ -964,7 +1037,7 @@ function paintTop() {
           <i>${signed(week)}</i><small>${c.tempoName || ''}</small>
         </div>
       </li>`;
-  }).join('');
+  }
 
   $$('.toprow', box).forEach(row => {
     const go = () => {
@@ -1032,7 +1105,8 @@ function buildViewPicker() {
     if (!o) return null;
     const on = v.type === VIEW.type && v.id === VIEW.id;
     const heat = Number.isFinite(o.now) ? ` · ${fmt(o.now, 0)}` : '';
-    return `<option value="${v.type}:${v.id}"${on ? ' selected' : ''}>${loc(o, 'short')}${heat}</option>`;
+    const nm = v.type === 'conflict' ? pairName(o) : loc(o, 'short');
+    return `<option value="${v.type}:${v.id}"${on ? ' selected' : ''}>${nm}${heat}</option>`;
   }).filter(Boolean);
   box.innerHTML = opts.join('');
 

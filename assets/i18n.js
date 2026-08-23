@@ -23,6 +23,14 @@ const I18N = {
     topTitle: 'Где горячее всего',
     topSub: 'Сортировка по накалу. Фаза подписана в каждой строке: без неё накал 50 у войны и у пограничного спора выглядят одинаково.',
     topNote: 'Накал — величина относительная: 50 это норма для конкретной пары, а не полпути к войне. Пунктирная рамка — покрытие данных ниже 40 %.',
+    /* Ступени эскалации. Лежат в словаре, а не приходят из данных: витрина
+       переведена на шестнадцать языков, и присылать в неё готовую русскую
+       строку значит показывать кириллицу немцу и китайцу. Порядок — индекс
+       ступени 0..7, совпадает с compute.PHASES. */
+    phases: ['Нормализация', 'Напряжённость', 'Кризис', 'Вооружённые инциденты',
+             'Ограниченный конфликт', 'Война', 'Расширенная война',
+             'Применение оружия массового поражения'],
+    phaseGroupOne: 'пара', phaseGroupFew: 'пары', phaseGroupMany: 'пар',
     topMore: 'Показать все',
     topLess: 'Свернуть',
     moverUp: 'Сильнее всего разогрелся',
@@ -204,6 +212,10 @@ const I18N = {
     topTitle: 'Where it burns hottest',
     topSub: 'Sorted by heat. The phase is spelled out on every row: without it, heat 50 looks the same for a war and for a border dispute.',
     topNote: 'Heat is relative: 50 is normal for that particular pair, not halfway to war. A dashed border means data coverage below 40 %.',
+    phases: ['Normalisation', 'Tension', 'Crisis', 'Armed incidents',
+             'Limited conflict', 'War', 'Wider war',
+             'Use of weapons of mass destruction'],
+    phaseGroupOne: 'pair', phaseGroupFew: 'pairs', phaseGroupMany: 'pairs',
     topMore: 'Show all',
     topLess: 'Collapse',
     moverUp: 'Heated up the most',
