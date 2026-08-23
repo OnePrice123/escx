@@ -243,9 +243,14 @@ function paintReadout() {
 
   // подстрочник: у диады — счётчик дней, у театра — какая диада задаёт число
   const sub = $('#conflictSub');
-  const upd = new Intl.DateTimeFormat(I18N[LANG]._locale, {
-    day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
-  }).format(new Date(c.updatedAt));
+  // Дата без времени, если пришёл день данных (а не метка сборки): часы и
+  // минуты у суточного среза — выдумка, и «19 августа, 00:00» читалось бы
+  // как точное время, которого нет.
+  const dayOnly = typeof c.updatedAt === 'string' && !c.updatedAt.includes('T');
+  const upd = new Intl.DateTimeFormat(I18N[LANG]._locale, dayOnly
+    ? { day: 'numeric', month: 'long' }
+    : { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }
+  ).format(new Date(c.updatedAt));
 
   if (roll) {
     sub.innerHTML = `<span class="tag">${t('theatreTag')}</span>

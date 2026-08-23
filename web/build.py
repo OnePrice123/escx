@@ -88,6 +88,37 @@ def _bucket(values: list[int], size: int) -> list[int]:
     return out
 
 
+DISPLAY_LOOKBACK = 14      # в каком окне ищем день с полным составом данных
+
+
+def display_day(con) -> str | None:
+    """Последний день, у которого состав данных полный. Один на всю витрину.
+
+    Раньше бралось просто MAX(day) — то есть сегодня. Но сегодня всегда самый
+    бедный день из возможных: GDELT за текущие сутки ещё дособирается, и
+    покрытие у него ниже вчерашнего. Витрина показывала самый неполный срез и
+    называла его текущим состоянием мира.
+
+    Берём последний день, у которого среднее покрытие дотягивает до лучшего за
+    две недели. Если сегодняшний день полон — возьмётся он, задержки не будет;
+    если недособран — отступим на день-два назад и честно подпишем дату.
+
+    День ОДИН на все пары, а не свой у каждой: сопоставимость между парами —
+    главное свойство продукта, а сравнивать вторник у одной пары со средой у
+    другой значит её потерять.
+    """
+    rows = con.execute(
+        "SELECT day, AVG(data_coverage) c FROM heat_daily "
+        "WHERE day >= date((SELECT MAX(day) FROM heat_daily), ?) "
+        "GROUP BY day ORDER BY day", (f"-{DISPLAY_LOOKBACK} day",)).fetchall()
+    if not rows:
+        return None
+    best = max(r["c"] or 0 for r in rows)
+    # Допуск на округление: полпункта покрытия — это не смена состава блоков.
+    full = [r["day"] for r in rows if (r["c"] or 0) >= best - 0.5]
+    return full[-1] if full else rows[-1]["day"]
+
+
 def archive(con) -> list[dict]:
     """Завершённые конфликты: пары со статусом не active.
 
@@ -279,6 +310,9 @@ def from_db(path: Path) -> dict | None:
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     try:
+        show_day = display_day(con)
+        if not show_day:
+            return None
         rows = con.execute("""
             SELECT d.dyad_id, d.name, d.region, d.side_a, d.side_b, d.dyad_type,
                    d.disputed, d.phase, d.phase_basis,
@@ -286,9 +320,8 @@ def from_db(path: Path) -> dict | None:
                    h.data_coverage, h.events_30d, h.method_version
             FROM dyads d
             JOIN heat_daily h ON h.dyad_id = d.dyad_id
-            WHERE h.day = (SELECT MAX(day) FROM heat_daily WHERE dyad_id = d.dyad_id)
-              AND d.status = 'active'
-        """).fetchall()
+            WHERE h.day = ? AND d.status = 'active'
+        """, (show_day,)).fetchall()
         if not rows:
             return None
 
@@ -411,6 +444,10 @@ def from_db(path: Path) -> dict | None:
                               -(x["h_abs"] or 0), x["name"]))
 
     return {"dyads": dyads, "source": "db", "details": details, "archive": arch,
+            # День, к которому относятся числа. Отдаётся отдельно от built_at:
+            # время сборки и дата данных — разные вещи, и путать их значит
+            # выдавать вчерашний срез за сегодняшний.
+            "data_day": show_day,
             "global": global_index(dyads, shares),
             "registry_total": len(dyads)}
 
