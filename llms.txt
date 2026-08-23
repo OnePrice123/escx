@@ -1,48 +1,52 @@
 # brink.watch
 
-> Барометр межгосударственных конфликтов. Для двух десятков пар государств
-> показывает ступень эскалации, накал 0–100, направление изменения и разрыв
-> между риторикой и действиями. Считается из открытых источников по
-> опубликованной методике; каждое число раскрывается до исходного события
-> со ссылкой на публикацию.
+> An escalation barometer for pairs of states. For two dozen pairs it shows the
+> escalation phase, a heat index of 0–100, the direction of change, and the gap
+> between rhetoric and action. Everything is computed from open sources following
+> a published methodology; every number opens down to the source event with a link
+> to the publication it came from.
 
-Отличается от других трекеров конфликтов одним: публикует счёт собственных
-ошибок. Обратный прогон по девятнадцати завершившимся конфликтам — уловлено
-16 из 19 в среднем за 21 месяц до эскалации, при этом две тревоги из трёх
-ложные (точность 32%). Число неудобное и потому опубликовано.
+What separates this from other conflict trackers is one thing: it publishes the
+record of its own errors. A backtest over nineteen conflicts that later escalated
+caught 16 of 19, a median of 21 months ahead — while two alarms in three were
+false, precision 32%. The number is uncomfortable, which is why it is published.
 
-Три правила, которые видно в данных:
-- неизмеренный блок помечен неизмеренным, а не заменён нулём;
-- сырые события и журнал ступеней только дополняются, переписать нельзя;
-- у каждой пары показано покрытие данными.
+Three rules visible in the data itself:
 
-## Данные (машиночитаемо, без ключа и регистрации)
+- an unmeasured block is marked unmeasured, never replaced with a zero;
+- raw events and the phase journal are append-only and cannot be rewritten;
+- every pair shows its data coverage.
 
-- [Витрина целиком](https://brink.watch/data/index.json): все пары, глобальный
-  индекс, день данных
-- [Одна пара](https://brink.watch/data/RUS-UKR.json): разбор накала по блокам,
-  история ступеней, исходные события со ссылками. Файл на каждую пару из
-  реестра, имя — код пары
-- [Обратный прогон](https://brink.watch/data/calibration.json): пороги допуска
-  и результат проверки
+## Data (machine-readable, no key, no signup)
 
-## Страницы
+- [Full showcase](https://brink.watch/data/index.json) — every pair, the global
+  index, and the day the numbers describe
+- [A single pair](https://brink.watch/data/RUS-UKR.json) — heat broken down by
+  block, phase history, raw source events with links. One file per pair in the
+  register; the filename is the pair code
+- [Backtest](https://brink.watch/data/calibration.json) — admission thresholds and
+  the result of the check
+- [Sitemap](https://brink.watch/sitemap.xml)
 
-- [Барометр](https://brink.watch/): мир целиком и лента пар по ступеням
-- [Страница пары](https://brink.watch/dyad.html?id=RUS-UKR): из чего сложилось
-  число, история ступеней, исходные события
-- [Методика](https://brink.watch/#method): что и как считается
-- [Условия использования](https://brink.watch/terms.html)
-- [Политика конфиденциальности](https://brink.watch/privacy.html)
+## Pages
 
-## Чем это НЕ является
+- [Barometer](https://brink.watch/) — the world at large, and pairs grouped by phase
+- [Pair page](https://brink.watch/dyad.html?id=RUS-UKR) — what the number is made
+  of, phase history, source events
+- [Methodology](https://brink.watch/#method) — what is computed and how
+- [Terms of use](https://brink.watch/terms.html)
+- [Privacy policy](https://brink.watch/privacy.html)
 
-Не прогноз войны и не предсказание событий. Не инвестиционный, юридический или
-военный совет. Не официальная позиция какого-либо государства. Накал 50 означает
-норму для конкретной пары, а не половину пути к войне.
+## What this is NOT
 
-## Цитирование
+Not a war forecast and not a prediction of events. Not investment, legal or
+military advice. Not the official position of any state or organisation. A heat of
+50 means normal for that particular pair, not halfway to war.
 
-При ссылке на числа укажите дату: значения меняются ежедневно, и цитата без
-даты вводит в заблуждение. Исходные данные принадлежат их источникам — UCDP,
-GDELT, OFAC, голосования ГА ООН, ADS-B — и распространяются на их условиях.
+## Citing
+
+When quoting a number, give the date: values change daily, and a quote without a
+date misleads. The underlying data belongs to its sources — UCDP, GDELT, OFAC, UN
+General Assembly votes, ADS-B — and is distributed on their terms.
+
+Contact: support@brink.watch

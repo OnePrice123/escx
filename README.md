@@ -1,87 +1,83 @@
-# brink.watch — барометр межгосударственных конфликтов
+# brink.watch — an escalation barometer for state pairs
 
-**[brink.watch](https://brink.watch)** показывает для двух десятков пар государств,
-на какой ступени эскалации они находятся, насколько горячо прямо сейчас, куда
-движется — и **из чего именно сложилось каждое число**.
+**[brink.watch](https://brink.watch)** shows, for two dozen pairs of states, what
+escalation phase they are in, how hot it is right now, which way it is moving —
+and **what exactly each number is made of**.
 
-Всё считается из открытых источников по [опубликованной методике](docs/01-methodology.md).
-Любое значение раскрывается до исходного события со ссылкой на публикацию.
+Everything is computed from open sources following a
+[published methodology](docs/01-methodology.md). Any value opens down to the
+source event, with a link to the publication it came from.
 
----
-
-## Чем это отличается от других трекеров конфликтов
-
-Их несколько, и почти все либо пересказывают новости языковой моделью, либо
-сваливают сырые сигналы на карту. Разница в одном:
-
-**У нас опубликован счёт собственных ошибок.**
-
-На витрине лежит обратный прогон по девятнадцати завершившимся конфликтам:
-индекс уловил **16 из 19** в среднем за 21 месяц до эскалации — и при этом
-**две тревоги из трёх оказались ложными**, точность 32%. Это неудобное число,
-и оно на сайте, а не в столе.
-
-Ещё три свойства из того же ряда:
-
-- **Видно, чего мы не знаем.** У каждой пары показано покрытие данными, а
-  неизмеренный блок помечен неизмеренным, а не заменён нулём.
-- **Историю нельзя переписать.** Сырые события, журнал ступеней и
-  опубликованные прогнозы защищены триггерами базы: только вставка.
-- **Число раскрывается до события.** На странице пары — таблица исходных
-  записей источников со ссылками на статьи.
-
-Скопировать это трудно не технически. Скопировать значит опубликовать свою
-частоту ошибок.
+*The documentation in `docs/` is written in Russian; this README and
+[`llms.txt`](llms.txt) are the English entry points.*
 
 ---
 
-## Что под капотом
+## What makes this different from other conflict trackers
+
+There are several. Most either have a language model retell the news, or dump raw
+signals onto a map. The difference is one thing:
+
+**We publish the record of our own errors.**
+
+The site carries a backtest over nineteen conflicts that have since escalated: the
+index caught **16 of 19**, a median of 21 months ahead — and **two alarms in three
+were false**, precision 32%. That is an uncomfortable number, and it is on the site
+rather than in a drawer.
+
+Three more properties from the same family:
+
+- **You can see what we don't know.** Every pair shows its data coverage, and an
+  unmeasured block is marked unmeasured rather than replaced with a zero.
+- **History cannot be rewritten.** Raw events, the phase journal and published
+  forecasts are protected by database triggers: insert only.
+- **Every number opens down to an event.** The pair page carries a table of raw
+  source records with links to the articles.
+
+Copying this is hard for a non-technical reason. Copying it means publishing your
+own error rate.
+
+---
+
+## Under the hood
 
 | | |
 |---|---|
-| Источники | UCDP GED и Candidate, GDELT, OFAC SDN, голосования ГА ООН, ADS-B |
-| Сверка | независимый индекс GPR (Caldara & Iacoviello) — не слагаемое, а вторая пара глаз |
-| Расчёт | Python, стандартная библиотека, **ноль зависимостей** |
-| Витрина | статические файлы, без сборщика и фреймворка |
-| Кабинет и подписки | Cloudflare Worker + D1 |
-| Стоимость эксплуатации | **$0/мес** на бесплатных тарифах |
-| Тесты | 437 офлайновых проверок (271 пайплайн + 166 API), сеть не нужна |
+| Sources | UCDP GED and Candidate, GDELT, OFAC SDN, UN General Assembly votes, ADS-B |
+| Cross-check | the independent GPR index (Caldara & Iacoviello) — not a term in the formula, a second pair of eyes |
+| Computation | Python, standard library, **zero dependencies** |
+| Front end | static files, no bundler and no framework |
+| Accounts and subscriptions | Cloudflare Worker + D1 |
+| Running cost | **$0/month** on free tiers |
+| Tests | 437 offline checks (271 pipeline + 166 API), no network needed |
 
-Данные витрины лежат открыто и машиночитаемо: [`data/index.json`](https://brink.watch/data/index.json)
-и файл на каждую пару, например [`data/RUS-UKR.json`](https://brink.watch/data/RUS-UKR.json).
-
----
-
-## Запустить сайт за $0
-
-Откройте **`START.html`** — 31 шаг с отметками, что где нажимать и что должно получиться.
-Пять блоков: GitHub → сайт на Cloudflare Pages → домен → привязка → подписки.
-Сайт можно поднять бесплатно и без домена; домен подключается позже.
+The showcase data is open and machine-readable:
+[`data/index.json`](https://brink.watch/data/index.json) plus one file per pair, for
+example [`data/RUS-UKR.json`](https://brink.watch/data/RUS-UKR.json).
 
 ---
 
-## Быстрый старт для разработчика
+## Quick start
 
 ```bash
-# 1. тесты сборщика данных — сеть не нужна
+# 1. tests for the data pipeline — no network required
 python3 ingest/tests/test_offline.py
 python3 ingest/tests/test_compute_offline.py
 python3 ingest/tests/test_llm_offline.py
 node api/test/test.mjs
 
-# 2. посмотреть дизайн-язык и прототипы — просто открыть в браузере
-open design/styleguide.html     # витрина дизайна, три оттенка
-open brand/logo.html            # знак: варианты, размеры, контексты
-open design/demo.html           # минимальный пример: tokens.css + escx-ui.js
-open web/prototype.html         # кликабельный прототип
-open web/schema.html            # вся система на одной странице
+# 2. design language and prototypes — just open them in a browser
+open design/styleguide.html     # design showcase, three tints
+open brand/logo.html            # the mark: variants, sizes, contexts
+open design/demo.html           # minimal example: tokens.css + escx-ui.js
+open web/schema.html            # the whole system on one page
 
-# 3. собрать и посмотреть сайт
-python3 web/build.py                    # реальные данные или пустое состояние
-python3 web/build.py --demo             # выдуманные числа, ТОЛЬКО для вёрстки
+# 3. build and view the site
+python3 web/build.py                    # real data, or an honest empty state
+python3 web/build.py --demo             # invented numbers, LAYOUT WORK ONLY
 python3 -m http.server -d site 8000     # http://localhost:8000
 
-# 4. собрать первые данные
+# 4. collect the first data
 cd ingest
 python3 -m escx.cli init
 python3 -m escx.cli backfill-ucdp --start 2024-01-01 --end 2024-12-31
@@ -90,94 +86,87 @@ python3 -m escx.cli compute
 python3 -m escx.cli status
 ```
 
-Зависимостей нет — только стандартная библиотека Python 3.11+.
+No dependencies — Python 3.11+ standard library only.
 
 ---
 
-## Что где лежит
+## Layout
 
-| Папка | Содержимое |
+| Folder | Contents |
 |---|---|
-| `docs/` | Пять документов. Читать по порядку номеров |
-| `design/` | `tokens.css` и `escx-ui.js` — дизайн-язык в коде. `styleguide.html` — витрина |
-| `brand/` | Знак, логотип, иконки. `logo.html` — витрина, `README.md` — правила |
-| `web/` | `build.py` — сборка статического сайта, `templates/` — шаблон, прототипы |
-| `ingest/` | Сборщик данных: UCDP, GDELT, санкции, GPR + LLM-извлечение |
-| `api/` | Cloudflare Worker: подписки, вход по ссылке, проверка доступа |
-| `.github/` | Ежечасный и ежедневный прогоны, тесты на push |
+| `docs/` | Eight documents, in Russian. Read them in numerical order |
+| `design/` | `tokens.css` and `escx-ui.js` — the design language as code; `styleguide.html` is the showcase |
+| `brand/` | Mark, logo, icons. `logo.html` is the showcase, `README.md` the rules |
+| `web/` | `build.py` builds the static site, `templates/` holds the shell |
+| `ingest/` | The pipeline: UCDP, GDELT, sanctions, UN votes, ADS-B, GPR |
+| `api/` | Cloudflare Worker: sign-in by email and password, subscriptions, access checks |
+| `.github/` | Hourly and daily runs, tests on push |
 
-### Документы
-
-1. **Методология** — фазы, накал, темп, вероятности, глобальный индекс, восемь правил
-   против «пальца в небо»
-2. **Бизнес-план** — рынок, конкуренты, тарифы, юнит-экономика, риски, план на 24 недели
-3. **Техплан** — архитектура, модель данных, пайплайн, дизайн-система, роадмап
-4. **Сбор данных** — источники, инструменты, лимиты, пять ловушек
-5. **ИИ в контуре** — где помогает, где вредит, правило допуска индикатора
-6. **Публикация** — бесплатный хостинг, сравнение тарифов, пошаговый запуск
-7. **Подписки** — почему не сервер, Workers + D1 + Paddle, экономика, настройка
+The documents cover methodology, business plan, technical plan, data collection,
+where AI helps and where it does harm, deployment, billing and mail.
 
 ---
 
-## Дизайн-язык «Тепло»
+## The «Warmth» design language
 
-Структуру держат не линии, а свет. Данные не раскрашиваются — поверхность теплеет.
+Structure is held by light, not by lines. Data is not coloured in — the surface
+warms up.
 
 ```html
 <html data-tint="sand">          <!-- sand | ash | clay -->
 <link rel="stylesheet" href="design/tokens.css">
-```
-
-```html
 <script src="design/escx-ui.js"></script>
 ```
+
 ```js
 gaugeEl.innerHTML = ESCX.lightArc(64, { id: 'global' });
 rowEl.style.setProperty('--heat', ESCX.heatWash(79));
 sparkEl.innerHTML  = ESCX.sparkWash(series);
 ```
 
-Обычный `<script>`, а не ES-модуль — намеренно: модули не работают по `file://`
-из-за CORS, а страницы здесь должны открываться двойным кликом, без сервера и сборки.
-Проверить: откройте `design/demo.html`.
+A plain `<script>` rather than an ES module, deliberately: modules fail over
+`file://` because of CORS, and every page here must open on a double click, with no
+server and no build step. Check it: open `design/demo.html`.
 
 ---
 
-## Публикация
+## Deployment
 
-Сайт статический: пайплайн считает всё заранее, `web/build.py` выгружает витрину
-в JSON, хостинг отдаёт папку. Ни сервера, ни базы — платить не за что.
+The site is static: the pipeline computes everything ahead of time, `web/build.py`
+writes the showcase out as JSON, the host serves a folder. No server, no database —
+nothing to pay for.
 
-**Рекомендуемый хостинг — Cloudflare Pages:** единственный из бесплатных, где
-не запрещено коммерческое использование. GitHub Pages и Vercel Hobby в условиях
-прямо запрещают вести на них бизнес, а в плане есть платные тарифы.
+**Cloudflare Pages** is the recommended host: the only free tier that does not
+forbid commercial use. GitHub Pages and Vercel Hobby prohibit running a business on
+them in their terms.
 
-Обе конфигурации в репозитории. Пошагово — в `docs/06-deploy.md`.
-
-Стоимость при статической схеме: **около доллара в месяц** (только домен).
-
----
-
-## Состояние
-
-Сайт опубликован: **[brink.watch](https://brink.watch/)**. Данных пока нет — показано
-честное пустое состояние: реестр из 20 наблюдаемых пар государств без единого числа.
-
-Пайплайн готов целиком: сбор (UCDP, GDELT, Всемирный банк), расчёт (`compute`), витрина.
-**Ближайший шаг — один раз запустить исторический прогон:** вкладка Actions -> backfill ->
-Run workflow. Дальше ежедневный прогон обновляет всё сам.
-
-Контекст для Claude Code — в `CLAUDE.md`.
+Step by step — `docs/06-deploy.md`.
 
 ---
 
-## Источники и лицензии
+## Status
 
-Проект использует открытые данные: [UCDP](https://ucdp.uu.se/),
-[GDELT](https://www.gdeltproject.org/), [GPR Index](https://www.matteoiacoviello.com/gpr.htm)
-(CC BY), [SIPRI](https://www.sipri.org/), публичные санкционные реестры,
-[голосования ГА ООН](https://digitallibrary.un.org/collection/Voting%20Data).
-Бенчмарк прогнозов — [VIEWS](https://viewsforecasting.org/) (Uppsala/PRIO).
+The site is live: **[brink.watch](https://brink.watch/)**, rebuilt nightly.
 
-[ACLED](https://acleddata.com/contentusage) **не используется**: их условия запрещают
-проекты этого типа. См. `CLAUDE.md`, инвариант 4.
+Twenty active pairs plus completed conflicts, kinetic data through the first half of
+2026, three years of media history, calibration published. The military block is
+still filling up: ADS-B needs a week of hourly snapshots per zone, and coverage of
+the zones that matter is limited by where volunteer receivers are.
+
+What is measured and what is not is visible on every pair page, deliberately.
+
+Context for Claude Code lives in `CLAUDE.md` (Russian).
+
+---
+
+## Sources and licences
+
+Open data: [UCDP](https://ucdp.uu.se/), [GDELT](https://www.gdeltproject.org/),
+[GPR Index](https://www.matteoiacoviello.com/gpr.htm) (free to use with attribution
+to the authors, the paper and the website), [SIPRI](https://www.sipri.org/), public
+sanctions registers, [UN General Assembly votes](https://digitallibrary.un.org/collection/Voting%20Data),
+[adsb.lol](https://adsb.lol/). Forecast benchmark — [VIEWS](https://viewsforecasting.org/)
+(Uppsala/PRIO).
+
+[ACLED](https://acleddata.com/contentusage) is **not used**: their terms forbid
+projects of this kind. See `CLAUDE.md`, invariant 4.
