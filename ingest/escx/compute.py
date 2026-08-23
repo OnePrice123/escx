@@ -574,7 +574,12 @@ def compute(con, *, days: int = SERIES_DAYS, today: date | None = None) -> dict:
             h30 = h_abs_by_day.get(day - timedelta(days=30), h)
             last_kin = next((i for i in range(0, 730)
                              if (b.get(day - timedelta(days=i)) or {}).get("kin_n")), None)
-            tp = tempo(h, h7, h30, ph, last_kin if last_kin is not None else 10 ** 4)
+            # Покрытие тех же дней передаётся вместе с накалом: без него темп
+            # не отличит остывание конфликта от исчезновения источника.
+            tp = tempo(h, h7, h30, ph, last_kin if last_kin is not None else 10 ** 4,
+                       cov_now=cov_by_day[day],
+                       cov_7=cov_by_day.get(day - timedelta(days=7)),
+                       cov_30=cov_by_day.get(day - timedelta(days=30)))
 
             heat_rows.append((did, day.isoformat(), round(h, 2),
                               round(h_rel_by_day[day], 2),
