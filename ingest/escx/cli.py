@@ -387,6 +387,49 @@ def cmd_verify_coding(args):
         print(f"разметка сохранена: {args.out}")
 
 
+def cmd_pull_gpr(args):
+    """Индекс геополитического риска Caldara & Iacoviello — для СВЕРКИ.
+
+    Это единственный источник в пайплайне, который не участвует в расчёте
+    индекса вовсе. Он лежит рядом и отвечает на вопрос, который иначе задать
+    некому: а наш-то инфопоток не врёт?
+
+    Инфополе целиком стоит на GDELT — один проект, одна автоматическая
+    кодировка, одна точка доверия. GPR считается независимой академической
+    группой по газетным архивам, другим методом и с опубликованной
+    методологией. Совпадают движения — обоим можно верить. Разошлись —
+    это повод разбираться, а не публиковать.
+
+    Пускать его в индекс без прохождения того же порога согласия нельзя:
+    это был бы ещё один медиаисточник, посчитанный как независимый блок.
+    """
+    from .sources import gpr
+
+    con = db.connect(args.db)
+    blob = gpr.fetch()
+    if not blob:
+        print("GPR недоступен — пропуск"); return
+
+    since = None
+    if args.since:
+        y, _, m = args.since.partition("-")
+        since = date(int(y), int(m or 1), 1)
+
+    n = 0
+    last: dict[str, tuple[str, float]] = {}
+    for key, ym, value in gpr.iter_series(blob, since=since):
+        db.set_series(con, "gpr", key, ym, value)
+        last[key] = (ym, value)
+        n += 1
+    con.commit()
+
+    g = last.get("global")
+    print(f"записано значений: {n}, рядов: {len(last)}"
+          + (f", глобальный GPR на {g[0]}: {g[1]:.1f}" if g else ""))
+    print("  источник: Caldara & Iacoviello, matteoiacoviello.com/gpr.htm — "
+          "использование свободное при указании авторов")
+
+
 def cmd_pull_unvotes(args):
     """Расстояние внешнеполитических позиций по голосованиям Генассамблеи ООН.
 
@@ -639,6 +682,10 @@ def main(argv=None):
 
     sub.add_parser("pull-unvotes",
                    help="расстояние позиций в ООН").set_defaults(fn=cmd_pull_unvotes)
+
+    pg = sub.add_parser("pull-gpr", help="индекс геополитического риска для сверки")
+    pg.add_argument("--since", default="", help="с какого месяца, ГГГГ-ММ (пусто — всё)")
+    pg.set_defaults(fn=cmd_pull_gpr)
 
     sub.add_parser("pull-sanctions",
                    help="дельта санкционного списка OFAC").set_defaults(fn=cmd_pull_sanctions)

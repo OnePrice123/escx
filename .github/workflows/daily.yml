@@ -152,6 +152,14 @@ jobs:
         continue-on-error: true
         run: cd ingest && python -m escx.cli pull-unvotes
 
+      # Индекс геополитического риска — не слагаемое, а вторая пара глаз.
+      # Инфополе целиком стоит на GDELT, и без независимого ряда мы не заметим,
+      # если тот однажды изменит поведение. Сравнивать станет возможно, когда
+      # у нашей стороны накопится хотя бы год общего периода.
+      - name: догрузить GPR для сверки
+        continue-on-error: true
+        run: cd ingest && python -m escx.cli pull-gpr --since 2015-01
+
       - name: пересчитать индикаторы и накал
         run: cd ingest && python -m escx.cli compute
 

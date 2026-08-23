@@ -191,6 +191,52 @@ db.set_watermark(con, "gdelt_export", "20260804031500")
 check("метка сохраняется", db.get_watermark(con, "gdelt_export") == "20260804031500")
 con.close(); os.unlink(tmp)
 
+print("\nGPR: разбор Stata .dta без библиотек")
+import struct as _st
+from escx.sources import gpr as G
+
+def _dta(names, types, rows):
+    """Минимальный файл Stata 118 — ровно то, что читает наш разборщик."""
+    k, n = len(names), len(rows)
+    head = (b"<stata_dta><header><release>118</release><byteorder>LSF</byteorder>"
+            + b"<K>" + _st.pack("<H", k) + b"</K>"
+            + b"<N>" + _st.pack("<Q", n) + b"</N></header>")
+    body = (b"<variable_types>" + _st.pack(f"<{k}H", *types) + b"</variable_types>"
+            + b"<varnames>" + b"".join(x.encode().ljust(129, b"\x00") for x in names)
+            + b"</varnames><data>")
+    for r in rows:
+        for v, t in zip(r, types):
+            body += _st.pack(G._NUM[t][1], v)
+    return head + body + b"</data></stata_dta>"
+
+_F = 65527   # float
+_blob = _dta(["month", "GPR", "GPRC_RUS", "GPRC_UKR"], [_F] * 4,
+             [(672.0, 100.5, 1.5, 2.5), (673.0, 110.0, 1.0e38, 3.0)])
+_names, _rows = G.read_dta(_blob)
+check("имена переменных прочитаны", _names == ["month", "GPR", "GPRC_RUS", "GPRC_UKR"], _names)
+check("наблюдения прочитаны", len(_rows) == 2)
+check("значение разобрано", abs(_rows[0]["GPR"] - 100.5) < 0.01, _rows[0]["GPR"])
+# Пропуск в Stata — не NaN, а число у верхней границы типа. Не отсечь его
+# значит записать 1.7e38 как значение и получить выброс, переживающий любую
+# винзоризацию.
+check("пропуск Stata распознан как пропуск", _rows[1]["GPRC_RUS"] is None, _rows[1]["GPRC_RUS"])
+
+check("месяц Stata: 0 — январь 1960", G.month_to_ym(0) == "1960-01", G.month_to_ym(0))
+check("месяц Stata: 672 — январь 2016", G.month_to_ym(672) == "2016-01", G.month_to_ym(672))
+check("месяц Stata: отрицательный — до 1960", G.month_to_ym(-12) == "1959-01", G.month_to_ym(-12))
+
+_ser = list(G.iter_series(_blob))
+check("глобальный ряд и страновые разделены",
+      sorted({k for k, _, _ in _ser}) == ["c:RUS", "c:UKR", "global"], sorted({k for k, _, _ in _ser}))
+check("пропуски в ряды не попали", all(v is not None for _, _, v in _ser))
+check("страна берётся кодом ISO3 из имени переменной",
+      ("c:UKR", "2016-02", 3.0) in _ser)
+try:
+    G.read_dta(_blob.replace(b"<release>118<", b"<release>117<"))
+    check("чужая версия формата отвергается", False, "прошла")
+except ValueError:
+    check("чужая версия формата отвергается", True)
+
 print("\nUCDP: адреса кандидатских файлов")
 from escx.sources import ucdp as U
 # Год в имени файла ДВУЗНАЧНЫЙ. Стоял четырёхзначный: адрес отдавал 404,
