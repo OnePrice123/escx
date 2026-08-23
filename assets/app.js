@@ -926,10 +926,14 @@ function paintWorld() {
 const TOP_SHOWN = 8;
 let topExpanded = false;
 
+/* Порядок ленты: сначала ступень, потом накал.
+   Накал меряет отклонение от нормы, а не тяжесть, и в одиночку ставил войну
+   ниже словесного кризиса — просто потому, что война для своей пары привычна,
+   а перепалка для своей нет. На вопрос «где хуже» отвечает ступень. */
 function conflictsByHeat() {
   return Object.values(CONFLICTS)
     .filter(c => Number.isFinite(c.now))
-    .sort((a, b) => b.now - a.now);
+    .sort((a, b) => (b.phase ?? -1) - (a.phase ?? -1) || b.now - a.now);
 }
 
 function paintTop() {
@@ -947,7 +951,7 @@ function paintTop() {
           data-id="${c.id}" tabindex="0" role="button">
         <div class="toprow__name">
           <span class="toprow__title">${loc(c, 'short')}</span>
-          <span class="toprow__meta">${c.phaseName || ''}${c.region ? ' · ' + c.region : ''}</span>
+          <span class="toprow__meta"><b class="toprow__phase">${c.phaseName || ''}</b>${c.region ? ' · ' + c.region : ''}</span>
         </div>
         <div class="toprow__spark">${sparkWash(c.series || [], { id: 'tl-' + c.id, color: zoneColor(c.now), h: 26 })}</div>
         <div class="toprow__num num" style="color:${zoneColor(c.now)}">${fmt(c.now, 0)}</div>

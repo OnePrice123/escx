@@ -1326,3 +1326,7 @@ body {
 .foot__legal a { color: var(--ink-3); text-decoration: underline;
                  text-decoration-color: var(--hair); text-underline-offset: 3px; }
 .foot__legal a:hover { color: var(--ink); }
+
+/* Ступень в строке ленты. Список упорядочен по ней, а не по накалу, — значит
+   и читаться она должна первой, а не сливаться с регионом серым мелким. */
+.toprow__phase { font-weight: 500; color: var(--ink-2); }
