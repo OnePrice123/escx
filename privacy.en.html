@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy — brink.watch</title>
+<meta name="description" content="What brink.watch collects, what for, where it is kept and how to have it deleted.">
+<link rel="canonical" href="https://brink.watch/privacy.en.html">
+<link rel="alternate" hreflang="ru" href="https://brink.watch/privacy.html">
+<link rel="alternate" hreflang="en" href="https://brink.watch/privacy.en.html">
+<link rel="alternate" hreflang="x-default" href="https://brink.watch/privacy.en.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="icon-32.png" sizes="32x32" type="image/png">
+<link rel="stylesheet" href="assets/styles.css?v=39">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar__in">
+    <a class="brand" href="/" aria-label="brink.watch">
+      <svg class="brand__glyph" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="bmg" gradientUnits="userSpaceOnUse" x1="34.5" y1="0" x2="75.4" y2="0">
+            <stop class="s-ash" offset="0" stop-opacity=".28"/>
+            <stop class="s-ember" offset=".55" stop-opacity=".72"/>
+            <stop class="s-ember" offset="1"/>
+          </linearGradient>
+          <radialGradient id="bmh">
+            <stop class="s-ember" offset="0" stop-opacity=".45"/>
+            <stop class="s-ember" offset="1" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <path d="M 34.50 76.85 A 31 31 0 1 1 75.39 32.22" fill="none" stroke="url(#bmg)" stroke-width="10" stroke-linecap="round"/>
+        <circle cx="75.4" cy="32.2" r="17.5" fill="url(#bmh)"/>
+        <circle class="c-ember" cx="75.4" cy="32.2" r="5"/>
+      </svg>
+      <span class="brand__name">brink<span class="brand__dot">·</span>watch</span>
+    </a>
+  </div>
+</header>
+
+<main id="main" class="wrap doc">
+
+  <p class="doc__lang"><a href="privacy.html">Русский</a></p>
+
+  <p class="eyebrow">Document</p>
+  <h1 class="doc__title">Privacy policy</h1>
+  <p class="lede">What brink.watch collects, what for, where it is kept and how to have it deleted. Written so that it can be checked: every statement here matches code that is published openly.</p>
+
+  <p class="doc__meta">
+    In force since 23 August 2026 · Revision 1.1 ·
+    Operator — <b>brink.watch</b> · Contact — <a href="mailto:support@brink.watch">support@brink.watch</a>
+  </p>
+
+  <p class="doc__note">This is a translation provided for convenience. The <a href="privacy.html">Russian version</a> is the authoritative one; in case of any discrepancy, the Russian text prevails.</p>
+
+  <section class="doc__sec">
+    <h2 class="h2">In short</h2>
+    <ul class="doc__list">
+      <li>The barometer is readable <b>without registering</b>. Until you open an account we know nothing about you.</li>
+      <li>There are <b>no advertising trackers</b> on the site: no Google Analytics, no Yandex.Metrica, no pixels, no third-party fonts. There is only the Cloudflare visit counter — <b>no cookies and no cross-site tracking</b> — and it is not served to visitors from the European Union at all.</li>
+      <li>Open an account and we keep your <b>email address</b> and a <b>hash of your password</b>. We do not have the password itself and it cannot be recovered from the hash.</li>
+      <li>Card details <b>never reach us</b>: payment is handled by Paddle.</li>
+      <li>We <b>do not sell or pass on</b> your data to third parties for advertising or profiling.</li>
+    </ul>
+  </section>
+
+  <section class="doc__sec">
+    <h2 class="h2">1. What is collected and what for</h2>
+
+    <h3 class="h3">1.1. If you are just reading the site</h3>
+    <p>The barometer is static files. No account is needed and we record nothing about you.</p>
+    <p>Your browser stores your display settings <b>in local storage on your own device</b>: the chosen language, the last pair you opened, the chart scale and the paper tint. These are not cookies, they are never sent anywhere and we cannot read them. They are cleared together with site data in your browser settings.</p>
+    <p>Like any site on the internet, brink.watch is visible to its host — Cloudflare — which keeps technical request logs and protects the site from attacks. That happens on Cloudflare's side under their rules.</p>
+
+    <p><b>The visit counter.</b> We count how many people come and which pages they read — there is no other way to tell whether the service is of use to anyone. For that, <b>Cloudflare Web Analytics</b> is enabled: it collects anonymous statistics — page views, referrer, country, device and browser type, load speed.</p>
+    <p>How it differs from the usual counters, and why we chose it: it <b>sets no cookies</b>, assigns you no persistent identifier and <b>does not follow you across other sites</b>. No visitor profile comes into existence, and we cannot tie this data to your account.</p>
+    <p class="doc__note">For visitors from the European Union the counter is <b>not served at all</b>: the script is not loaded for them and no statistics about them are collected. This is a setting on our side, not a promise made in words.</p>
+
+    <h3 class="h3">1.2. If you have opened an account</h3>
+    <table class="doc__table">
+      <thead><tr><th>What</th><th>What for</th><th>How long it is kept</th></tr></thead>
+      <tbody>
+        <tr><td>Email address</td><td>This is your login. It also receives access-related mail and notifications, if you have switched them on</td><td>As long as the account exists</td></tr>
+        <tr><td>Password hash</td><td>Sign-in check. The password is transformed irreversibly (PBKDF2 with a salt and a secret key); the original password is stored nowhere</td><td>As long as the account exists</td></tr>
+        <tr><td>Address confirmation flag</td><td>Confirms the address belongs to you</td><td>As long as the account exists</td></tr>
+        <tr><td>Consent to notifications</td><td>To send mail only to those who asked for it</td><td>As long as the account exists</td></tr>
+        <tr><td>Session identifier (as a hash)</td><td>So the password is not asked for on every page</td><td>30 days, or until you sign out</td></tr>
+        <tr><td>One-time links (as hashes)</td><td>Address confirmation and forgotten-password reset</td><td>24 hours and 1 hour respectively</td></tr>
+        <tr><td>Failed sign-in counter: email address and IP address</td><td>Protection against password guessing</td><td>15 minutes, then erased automatically</td></tr>
+      </tbody>
+    </table>
+    <p class="doc__note">The IP address is used only as the key of the attempt counter and lives the same 15 minutes. We keep no log of your visits and do not link an IP to what you do in your account.</p>
+
+    <h3 class="h3">1.3. If you have taken out a subscription</h3>
+    <p>Payments are handled by <b>Paddle</b> acting as merchant of record. Card details are entered on their side, never reach us and are not stored by us.</p>
+    <p>From Paddle we receive and keep what is needed to open access to you: email address, subscription and customer identifiers, the plan, the subscription status and the end date of the paid period. A technical record of the payment notification received is stored separately — it is needed so that one payment is not processed twice, and so that there is something to rely on if money is ever disputed.</p>
+  </section>
+
+  <section class="doc__sec">
+    <h2 class="h2">2. Where it is kept</h2>
+    <p>Account data sits in a <b>Cloudflare D1</b> database in the European region. Mail is sent through <b>Resend</b> (European sending region); incoming mail to <code>support@brink.watch</code> is received by <b>Cloudflare Email Routing</b> and forwarded to the operator's mailbox.</p>
+    <p>This means the companies listed technically process data on our instructions. We chose them and we answer to you for that choice.</p>
+  </section>
+
+  <section class="doc__sec">
+    <h2 class="h2">3. Cookies</h2>
+    <p>The site sets <b>one</b> cookie, and only after you sign in: <code>escx_session</code> — the identifier of your session.</p>
+    <p>It is marked <code>HttpOnly</code> (not readable by scripts on the page), <code>Secure</code> (sent only over an encrypted connection) and <code>SameSite=Lax</code> (not sent when arriving from someone else's site). There are no advertising or analytics cookies — the visit counter works without them — and therefore no consent banner either: there is nothing to consent to.</p>
+  </section>
+
+  <section class="doc__sec">
+    <h2 class="h2">4. Mail</h2>
+    <p>Service mail — address confirmation and password reset — arrives because you asked for that action yourself. You cannot opt out of it: without it signing in is impossible.</p>
+    <p>Notifications about changes in pairs arrive <b>only if you switched them on yourself</b> in your account. They can be switched off in the same place, in one click, at any time and without losing the account.</p>
+  </section>
+
+  <section class="doc__sec">
+    <h2 class="h2">5. What we do NOT do</h2>
+    <ul class="doc__list">
+      <li>We do not sell, rent out or pass your data to third parties for advertising.</li>
+      <li>We do not build advertising profiles and do not follow you across other sites.</li>
+      <li>We do not collect data the service works without: name, phone number, address, date of birth and the like are neither asked for nor stored.</li>
+      <li>We do not show advertising.</li>
+    </ul>
+  </section>
+
+  <section class="doc__sec">
+    <h2 class="h2">6. Your rights</h2>
+    <p>Write to <a href="mailto:support@brink.watch">support@brink.watch</a> and we will:</p>
+    <ul class="doc__list">
+      <li>tell you what data about you we hold, and send you a copy of it;</li>
+      <li>correct anything inaccurate;</li>
+      <li>delete the account together with all data attached to it;</li>
+      <li>switch off notifications (you can also do this yourself in your account).</li>
+    </ul>
+    <p>We reply within a reasonable time, normally within 30 days. So that your data is not handed to a stranger, the request has to come from the address the account is registered to.</p>
+    <p class="doc__note">Some records we are obliged to keep even after an account is deleted: payment records are needed for accounting and tax purposes and are kept for as long as the law requires. Records of payments already made are also kept by Paddle as merchant of record.</p>
+  </section>
+
+  <section class="doc__sec">
+    <h2 class="h2">7. Children</h2>
+    <p>The service is not intended for anyone under 16 and does not knowingly collect their data. If such data has reached us, write to us and we will delete it.</p>
+  </section>
+
+  <section class="doc__sec">
+    <h2 class="h2">8. Security</h2>
+    <p>Passwords are stored only as an irreversible hash with an individual salt and an additional secret key that is not held in the database. Session identifiers and one-time links are stored as hashes too — a copy of the database does not let anyone into someone else's account. The connection to the site is always encrypted.</p>
+    <p>Absolute protection does not exist, and promising it would be dishonest. If you have found a vulnerability, write to <a href="mailto:support@brink.watch">support@brink.watch</a>; we will look into it and thank you.</p>
+  </section>
+
+  <section class="doc__sec">
+    <h2 class="h2">9. Changes</h2>
+    <p>If this policy changes, we will update the date at the top of the page and the revision number. Substantial changes affecting data already collected will be sent by mail to everyone who has an account.</p>
+  </section>
+
+  <section class="doc__sec">
+    <h2 class="h2">10. The data the barometer itself shows</h2>
+    <p>This is a separate matter, but it belongs here. The barometer is computed from open sources — GDELT, UCDP, the OFAC sanctions lists, UN General Assembly votes, the open ADS-B network — and describes <b>events between states</b>, not people. There is no personal data in the barometer.</p>
+    <p>The method is published openly, and every number can be unfolded down to the source event with a link to the publication.</p>
+  </section>
+
+  <div class="doc__foot">
+    <a class="btn" href="/">To the barometer</a>
+    <a class="btn" href="terms.en.html">Terms of use</a>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__in">
+    <p class="foot__legal">
+      <span class="foot__mark">brink<span class="brand__dot">·</span>watch</span>
+      <span class="sep">·</span> © 2026
+      <span class="sep">·</span> <a href="privacy.en.html">Privacy</a>
+      <span class="sep">·</span> <a href="terms.en.html">Terms</a>
+      <span class="sep">·</span> <a href="mailto:support@brink.watch">support@brink.watch</a>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

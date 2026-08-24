@@ -742,7 +742,9 @@ def build(demo_mode: bool = False) -> dict:
     if p_llms.exists():
         shutil.copy2(p_llms, SITE / "llms.txt")
 
-    for f in ("privacy.html", "terms.html"):
+    # Обе редакции, русская и английская. Английская — перевод для удобства,
+    # старшей остаётся русская, и это написано в самих документах.
+    for f in ("privacy.html", "terms.html", "privacy.en.html", "terms.en.html"):
         p = ROOT / f
         if p.exists():
             shutil.copy2(p, SITE / f)

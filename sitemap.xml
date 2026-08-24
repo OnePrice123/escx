@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://brink.watch/</loc><lastmod>2026-08-24</lastmod><changefreq>daily</changefreq></url>
+  <url><loc>https://brink.watch/privacy.en.html</loc><lastmod>2026-08-24</lastmod><changefreq>yearly</changefreq></url>
   <url><loc>https://brink.watch/privacy.html</loc><lastmod>2026-08-24</lastmod><changefreq>yearly</changefreq></url>
   <url><loc>https://brink.watch/schema.html</loc><lastmod>2026-08-24</lastmod><changefreq>yearly</changefreq></url>
+  <url><loc>https://brink.watch/terms.en.html</loc><lastmod>2026-08-24</lastmod><changefreq>yearly</changefreq></url>
   <url><loc>https://brink.watch/terms.html</loc><lastmod>2026-08-24</lastmod><changefreq>yearly</changefreq></url>
   <url><loc>https://brink.watch/dyad.html?id=RUS-UKR</loc><lastmod>2026-08-24</lastmod><changefreq>daily</changefreq></url>
   <url><loc>https://brink.watch/dyad.html?id=IRN-ISR</loc><lastmod>2026-08-24</lastmod><changefreq>daily</changefreq></url>

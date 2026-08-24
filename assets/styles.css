@@ -1285,6 +1285,12 @@ body {
    Узкая колонка и крупный интерлиньяж: это текст, который читают
    подряд, а не просматривают. */
 .doc { max-width: 720px; padding-block: clamp(28px, 5vw, 64px); }
+/* Переключатель редакции документа. Стоит над заголовком, а не в подвале:
+   читатель должен увидеть, что есть его язык, до того как начнёт читать чужой. */
+.doc__lang { margin: 0 0 14px; font-size: 13px; }
+.doc__lang a { color: var(--ink-3); text-decoration: none;
+               border-bottom: 1px solid var(--hair); }
+.doc__lang a:hover { color: var(--ink); }
 .doc__title { margin: 0 0 10px; font: 400 clamp(26px, 3.6vw, 38px)/1.15 var(--serif); }
 .doc__meta { margin: 20px 0 0; padding: 12px 0; font-size: 13px; line-height: 1.8;
              color: var(--ink-3); border-top: 1px solid var(--hair-soft);
