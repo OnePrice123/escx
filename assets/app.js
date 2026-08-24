@@ -201,10 +201,10 @@ function paintArchive() {
       ? `${String(a.events_from).slice(0, 4)}—${String(a.events_to).slice(0, 4)}` : '';
     return `
       <li class="archrow">
-        <a class="archrow__name" href="dyad.html?id=${encodeURIComponent(String(a.dyad_id).toUpperCase())}">${a.name || a.dyad_id}</a>
-        <span class="archrow__meta">${[a.region, a.disputed].filter(Boolean).join(' · ')}</span>
+        <a class="archrow__name" href="dyad.html?id=${encodeURIComponent(String(a.dyad_id).toUpperCase())}">${pairName({ sideA: a.side_a, sideB: a.side_b, name_ru: a.name, name_en: a.name }) || a.dyad_id}</a>
+        <span class="archrow__meta">${[regionName({ regionKey: a.region_key, region: a.region }), disputedName(a)].filter(Boolean).join(' · ')}</span>
         <span class="archrow__years num">${years}</span>
-        <span class="archrow__n num">${a.events_total != null ? a.events_total + ' записей' : ''}</span>
+        <span class="archrow__n num">${a.events_total != null ? a.events_total + ' ' + t('archiveRecords') : ''}</span>
       </li>`;
   }).join('');
   box.hidden = false;
@@ -238,7 +238,7 @@ function paintReadout() {
     // данных названы как в реестре — RUS-UKR. Локальный сервер на Windows
     // разницу простит, Cloudflare Pages вернёт 404.
     if (!roll) deep.innerHTML =
-      `<a href="dyad.html?id=${encodeURIComponent(String(c.id).toUpperCase())}">Из чего сложилось это число: индикаторы, история ступеней и исходные события →</a>`;
+      `<a href="dyad.html?id=${encodeURIComponent(String(c.id).toUpperCase())}">${t('dyadLink')}</a>`;
   }
 
   // подстрочник: у диады — счётчик дней, у театра — какая диада задаёт число
@@ -263,9 +263,9 @@ function paintReadout() {
     // фаза, темп и покрытие данных.
     const bit = (v, cls) => (v ? `<span class="sep">·</span><span${cls ? ` class="${cls}"` : ''}>${v}</span>` : '');
     sub.innerHTML = `<span class="tag">${t('dyadTag')}</span>`
-      + bit(c.phaseName)
-      + bit(c.tempoName)
-      + bit(c.region)
+      + bit(phaseTitle(c))
+      + bit(tempoTitle(c))
+      + bit(regionName(c))
       + (Number.isFinite(c.coverage) ? bit(`${t('coverage')} ${c.coverage}%`) : '')
       + `<span class="sep">·</span>${t('updated')} ${upd}`;
   }
@@ -913,12 +913,12 @@ function paintWorld() {
 
   $('#worldAxes').innerHTML = (LIVE.globalAxes || []).map(a => `
     <li class="meter">
-      <div class="meter__top"><span class="meter__name">${a.name}</span></div>
+      <div class="meter__top"><span class="meter__name">${axisTitle(a)}</span></div>
       <div class="meter__row" style="--barColor:${zoneColor(a.value)}">
         <div class="meter__track"><i class="meter__fill" style="width:${a.value}%"></i></div>
         <span class="meter__val">${fmtInt(a.value)}</span>
       </div>
-      ${a.note ? `<p class="meter__desc">${a.note}</p>` : ''}
+      ${axisNote(a) ? `<p class="meter__desc">${axisNote(a)}</p>` : ''}
     </li>`).join('');
 }
 
@@ -967,6 +967,37 @@ function countryName(a3) {
 function pairName(c) {
   const a = countryName(c.sideA), b = countryName(c.sideB);
   return (a && b) ? `${a} — ${b}` : loc(c, 'short');
+}
+
+/* Ось, регион и темп собираются из СЛОВАРЯ по ключу, а не берутся строкой
+   из витрины. Пайплайн отдаёт ключ и числа; слова знает только страница,
+   потому что их шестнадцать наборов. Русская строка из данных остаётся
+   последним запасом — на случай ключа, которого в словаре ещё нет. */
+function axisTitle(a) {
+  const m = (I18N[LANG] && I18N[LANG].axes) || (I18N.en && I18N.en.axes) || {};
+  return m[a.key] || a.name || a.key || '';
+}
+
+function axisNote(a) {
+  const k = { kinetic: 'axisKineticNote', powers: 'axisPowersNote',
+              strategic: 'axisStrategicNote' }[a.key];
+  if (!k) return a.note || '';
+  return t(k).replace('{n}', a.n ?? '').replace('{total}', a.total ?? '');
+}
+
+function regionName(c) {
+  const m = (I18N[LANG] && I18N[LANG].regions) || (I18N.en && I18N.en.regions) || {};
+  return m[c.regionKey] || c.region || '';
+}
+
+function disputedName(c) {
+  const m = (I18N[LANG] && I18N[LANG].disputed) || (I18N.en && I18N.en.disputed) || {};
+  return m[c.disputed_key || c.disputedKey] || c.disputed || '';
+}
+
+function tempoTitle(c) {
+  const m = (I18N[LANG] && I18N[LANG].tempos) || (I18N.en && I18N.en.tempos) || {};
+  return m[c.tempo || 'none'] || c.tempoName || '';
 }
 
 /* Название ступени берётся из словаря по НОМЕРУ, а не из данных.
@@ -1029,12 +1060,12 @@ function paintTop() {
           data-id="${c.id}" tabindex="0" role="button">
         <div class="toprow__name">
           <span class="toprow__title">${pairName(c)}</span>
-          <span class="toprow__meta">${c.region || ''}</span>
+          <span class="toprow__meta">${regionName(c)}</span>
         </div>
         <div class="toprow__spark">${sparkWash(c.series || [], { id: 'tl-' + c.id, color: zoneColor(c.now), h: 26 })}</div>
         <div class="toprow__num num" style="color:${zoneColor(c.now)}">${fmt(c.now, 0)}</div>
         <div class="toprow__d" data-dir="${week > 0 ? 'up' : week < 0 ? 'down' : 'flat'}">
-          <i>${signed(week)}</i><small>${c.tempoName || ''}</small>
+          <i>${signed(week)}</i><small>${tempoTitle(c)}</small>
         </div>
       </li>`;
   }
@@ -1083,7 +1114,7 @@ function paintMovers() {
   const card = (x, key) => !x || x.d === 0 ? '' : `
     <div class="mover" data-dir="${x.d > 0 ? 'up' : 'down'}">
       <p class="mover__label">${t(key)}</p>
-      <p class="mover__name">${loc(x.c, 'short')}</p>
+      <p class="mover__name">${pairName(x.c)}</p>
       <p class="mover__d num">${signed(x.d)}</p>
     </div>`;
 

@@ -146,6 +146,8 @@ def archive(con) -> list[dict]:
     for r in rows:
         d = dict(r)
         d["name"] = d.get("name") or f'{d["side_a"]} — {d["side_b"]}'
+        d["region_key"] = REGION_KEY.get(d.get("region") or "")
+        d["disputed_key"] = DISPUTED_KEY.get(d.get("disputed") or "")
         try:
             s = con.execute(
                 "SELECT COUNT(*) n, MIN(occurred_at) a, MAX(occurred_at) b "
@@ -183,6 +185,46 @@ def _events_only(con, dyad_id: str, out: dict) -> dict:
         out["events"] = []
     return out
 
+
+# Регион реестра -> ключ словаря витрины. Отдавать наружу русское слово нельзя:
+# страница переведена на шестнадцать языков, а регион приходил строкой и
+# показывался кириллицей всем. Таблица живёт здесь, потому что это соответствие
+# между реестром и витриной, а не свойство данных.
+REGION_KEY = {
+    "Балканы": "balkans", "Ближний Восток": "middleEast",
+    "Восточная Азия": "eastAsia", "Восточная Европа": "eastEurope",
+    "Восточное Средиземноморье": "eastMed", "Гималаи": "himalaya",
+    "Кавказ": "caucasus", "Корейский полуостров": "korea",
+    "Северная Африка": "northAfrica", "Северо-Восточная Африка": "hornAfrica",
+    "Центральная Африка": "centralAfrica", "Юго-Восточная Азия": "seAsia",
+    "Южная Азия": "southAsia", "Южная Америка": "southAmerica",
+    "Южно-Китайское море": "southChinaSea",
+}
+
+# Предмет спора реестра -> ключ словаря. Та же причина, что у REGION_KEY:
+# это свободная формулировка на русском, а страницу читают на шестнадцати
+# языках. Русская строка остаётся в витрине запасом.
+DISPUTED_KEY = {
+    "Западная Сахара": "westernSahara", "Кашмир": "kashmir",
+    "Сенкаку / Дяоюйдао": "senkaku", "Эссекибо": "essequibo",
+    "восточные провинции": "easternProvinces",
+    "делимитация границы, транспортный коридор": "borderCorridor",
+    "линия Дюранда, приграничные операции": "durandLine",
+    "линия фактического контроля": "lac",
+    "отмель Скарборо, Спратли": "scarboroughSpratly",
+    "плотина на Голубом Ниле": "blueNileDam",
+    "пограничная линия": "borderLine",
+    "приграничные храмовые зоны": "templeZones",
+    "региональное влияние, ядерная программа": "regionalNuclear",
+    "статус острова": "islandStatus",
+    "статус полуострова": "peninsulaStatus",
+    "статус территории, север Косова": "kosovoNorth",
+    "территориальный контроль": "territorialControl",
+    "удары и судоходство в Красном море": "redSeaShipping",
+    "шельф и воздушное пространство Эгейского моря": "aegean",
+    "южный Ливан": "southLebanon",
+    "ядерная программа, санкции": "nuclearSanctions",
+}
 
 DIV_HISTORY_DAYS = 30      # столько столбиков рисует график разрыва
 DIV_LAG_MAX = 21           # докуда искать запаздывание дел за словами
@@ -415,6 +457,8 @@ def from_db(path: Path) -> dict | None:
             d["series_all_from"] = dm[0]
             d["coverage"]["all"] = [20] * len(dh)         # только кинетика
 
+        d["region_key"] = REGION_KEY.get(d.get("region") or "")
+        d["disputed_key"] = DISPUTED_KEY.get(d.get("disputed") or "")
         d["divergence"] = divergence_of(div_pairs.get(d["dyad_id"], []))
         d["events_30d"] = None if d.get("events_30d") is None else int(d["events_30d"])
         d["weight"] = wt.consequence(d["side_a"], d["side_b"], shares)
@@ -478,16 +522,20 @@ def global_index(dyads: list[dict], shares: dict[str, dict[str, float]]) -> dict
 
     return {
         "gei": gei, "delta_30": d30,
+        # Оси отдаются КЛЮЧОМ И ЧИСЛАМИ, без готовых слов. Витрина переведена
+        # на шестнадцать языков, и русская строка отсюда показывалась немцу и
+        # китайцу как есть. Название и подпись собирает страница из своего
+        # словаря; здесь только то, чего словарь знать не может, — сами числа.
         "axes": [
-            {"key": "kinetic", "name": "Кинетическая интенсивность",
+            {"key": "kinetic",
              "value": wavg([(d, w) for d, w in pairs if d in kinetic]),
-             "note": f"диад в фазе 3 и выше: {len(kinetic)} из {len(dyads)}"},
-            {"key": "powers", "name": "Вовлечённость крупных держав",
+             "n": len(kinetic), "total": len(dyads)},
+            {"key": "powers",
              "value": wavg(top_mil),
-             "note": "восемь диад с наибольшей долей мировых военных расходов"},
-            {"key": "strategic", "name": "Стратегический риск",
+             "n": len(top_mil), "total": len(dyads)},
+            {"key": "strategic",
              "value": wavg([(d, w) for d, w in pairs if d in nuclear]),
-             "note": f"диад с ядерной стороной: {len(nuclear)}"},
+             "n": len(nuclear), "total": len(dyads)},
         ],
         "series_5y": [],
     }

@@ -80,6 +80,7 @@ function toConflict(d, builtAt) {
     updatedAt: d.day || toIso(d.built_at || builtAt),
 
     /* Поля витрины, которых у прототипа не было */
+    regionKey: d.region_key || null,   // ключ словаря; region остаётся запасом
     phase: d.phase,
     phaseName: d.phase_name,
     phaseBasis: d.phase_basis,

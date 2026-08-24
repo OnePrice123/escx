@@ -13,11 +13,22 @@
 const CALIB_URL = 'data/calibration.json';
 let CALIB = null;
 
-const OUTCOME = {
-  negotiated: 'соглашение',
-  military:   'военная развязка',
-  ceasefire:  'перемирие',
-};
+/* Исход и пояснение приходят из пайплайна КЛЮЧАМИ, словами их называет
+   словарь. Имя конфликта и соглашения — исторические названия, их держит
+   конфиг калибровки в двух вариантах: русский и английский. Для остальных
+   четырнадцати языков берётся английский — это честнее кириллицы. */
+function calWord(group, key, fallback) {
+  const m = (I18N[LANG] && I18N[LANG][group]) || (I18N.en && I18N.en[group]) || {};
+  return m[key] || fallback || key || '';
+}
+
+function calibName(r) {
+  return LANG === 'ru' ? r.name : (r.name_en || r.name);
+}
+
+function calibAccord(r) {
+  return LANG === 'ru' ? (r.accord || '') : (r.accord_en || r.accord || '');
+}
 
 function calibSpark(series, w = 220, h = 44) {
   if (!series || series.length < 2) return '';
@@ -58,12 +69,12 @@ function paintCalib() {
   $('#calBoard').innerHTML = rows.map(r => {
     const lead = r.lead != null
       ? `<span class="calrow__lead">${r.lead} ${t('calMonths')}</span>`
-      : `<span class="calrow__none">${r.why || r.note || ''}</span>`;
+      : `<span class="calrow__none">${calWord('calWhy', r.why)}</span>`;
     return `
       <div class="calrow">
         <div class="calrow__meta">
-          <span class="calrow__name">${r.name}</span>
-          <span class="calrow__acc">${OUTCOME[r.outcome] || r.outcome} · ${r.accord || ''}</span>
+          <span class="calrow__name">${calibName(r)}</span>
+          <span class="calrow__acc">${calWord('calOutcomes', r.outcome)} · ${calibAccord(r)}</span>
         </div>
         <div class="calrow__spark">${calibSpark(r.series)}</div>
         <div class="calrow__right">${lead}</div>

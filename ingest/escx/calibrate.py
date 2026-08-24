@@ -101,20 +101,21 @@ def lead_months(series: list[float], threshold: float = THRESHOLD) -> tuple[int 
     бои прекратились, поэтому к месяцу соглашения накал закономерно падает.
     По этому условию не проходил ни один конфликт с пиком 85.
 
-    Возвращается (опережение, пояснение). None означает отсутствие перехода,
-    и пояснение говорит, какого именно: фон уже был выше порога или порог
-    не достигался вовсе. Схлопывать эти случаи в одно «сигнала нет» нельзя —
-    они означают разное.
+    Возвращается (опережение, КЛЮЧ пояснения). None означает отсутствие
+    перехода, и ключ говорит, какого именно: фон уже был выше порога или
+    порог не достигался вовсе. Схлопывать эти случаи в одно «сигнала нет»
+    нельзя — они означают разное. Ключ, а не готовая фраза: словами его
+    называет витрина, и на каждом из шестнадцати языков по-своему.
     """
     if not series:
-        return None, "нет данных"
+        return None, "noData"
     if series[0] >= threshold:
-        return None, "фон выше порога — перехода не было"
+        return None, "background"
     for i in range(1, len(series)):
         if series[i - 1] < threshold <= series[i]:
-            back = "" if all(v >= threshold for v in series[i:]) else ", с возвратом"
-            return len(series) - 1 - i, "переход" + back
-    return None, "порог не достигнут"
+            back = all(v >= threshold for v in series[i:])
+            return len(series) - 1 - i, "crossed" if back else "crossedBack"
+    return None, "notReached"
 
 
 HORIZON_M = 36         # за сколько месяцев после сигнала развязка ещё считается «той самой»
@@ -292,7 +293,7 @@ def run(con, path: Path | None = None) -> dict:
         months = window_months(c["resolved"])
         fat = monthly_fatalities(con, c["conflict_id"])
         if not any(fat.get(m) for m in months):
-            rows.append({**c, "note": "нет событий в окне", "lead": None})
+            rows.append({**c, "why": "noEvents", "lead": None})
             continue
         hs = heat_series(fat, months)
         lead, why = lead_months(hs)
