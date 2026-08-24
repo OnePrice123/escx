@@ -33,22 +33,56 @@ function show(which) {
   });
 }
 
-function say(node, text, bad = false) {
+/* Сообщение помнит, ИЗ ЧЕГО оно получилось: ключ словаря и подстановки.
+ * Без этого смена языка оставляла на экране фразу на прежнем языке — не
+ * ошибка расчёта, но ровно тот стык, на котором перевод и выглядит
+ * недоделанным. Ключ 'err:*' означает словарь отказов сервера. */
+function say(node, key, bad = false, vars = null) {
   node.hidden = false;
+  node.dataset.msgKey = key || '';
+  node.dataset.msgVars = vars ? JSON.stringify(vars) : '';
+  node.textContent = msgText(key, vars);
+  node.classList.toggle('acc__msg--bad', bad);
+}
+
+/* Готовая фраза без ключа: единственный случай — сервер вернул причину,
+ * которой нет в словаре. Переезжать ей не с чем, и это честнее пустоты. */
+function sayRaw(node, text, bad = false) {
+  node.hidden = false;
+  node.dataset.msgKey = '';
+  node.dataset.msgVars = '';
   node.textContent = text;
   node.classList.toggle('acc__msg--bad', bad);
 }
 
-/* Текст отказа: сперва перевод по ключу, потом — фраза сервера.
+function msgText(key, vars) {
+  if (!key) return '';
+  if (key.startsWith('err:')) {
+    const m = (I18N[LANG] && I18N[LANG].accErrors) || (I18N.en && I18N.en.accErrors) || {};
+    const s = m[key.slice(4)] || '';
+    return s.replace('{n}', (vars && vars.n) ?? '');
+  }
+  return t(key);
+}
+
+/* Перерисовать сообщения, уже стоящие на экране. Зовётся при смене языка. */
+function repaintMessages() {
+  document.querySelectorAll('.acc__msg').forEach(n => {
+    const key = n.dataset.msgKey;
+    if (key) n.textContent = msgText(key, n.dataset.msgVars ? JSON.parse(n.dataset.msgVars) : null);
+  });
+}
+
+/* Показать отказ: сперва перевод по ключу, потом — фраза сервера.
  * Порядок именно такой. Если однажды сервер вернёт ключ, которого здесь нет,
  * человек увидит русскую фразу вместо пустого места — это плохо, но честно,
  * а пустое сообщение об ошибке означало бы, что всё в порядке. */
-function errText(e) {
-  if (e.offline) return t('accNetDown');
+function sayErr(node, e) {
+  if (e.offline) return say(node, 'accNetDown', true);
   const key = e.data?.key;
   const m = (I18N[LANG] && I18N[LANG].accErrors) || (I18N.en && I18N.en.accErrors) || {};
-  const s = key && m[key];
-  return s ? s.replace('{n}', e.data?.n ?? '') : (e.message || t('accNetDown'));
+  if (key && m[key]) return say(node, 'err:' + key, true, { n: e.data?.n });
+  return sayRaw(node, e.message || t('accNetDown'), true);
 }
 
 /**
@@ -116,7 +150,7 @@ $('#authForm')?.addEventListener('submit', async ev => {
   const label = btn.textContent;
 
   if (password.length < 10 && mode === 'register') {
-    say(msg, t('accPwShortLocal'), true);
+    say(msg, 'accPwShortLocal', true);
     return;
   }
 
@@ -136,7 +170,7 @@ $('#authForm')?.addEventListener('submit', async ev => {
     // заново, незачем.
     if (e.data?.code === 'unverified') { toPending(email, password); return; }
 
-    say(msg, errText(e), true);
+    sayErr(msg, e);
     // Занятый адрес при регистрации — единственный случай, когда полезно
     // подсказать действие: человек уже зарегистрирован и просто забыл.
     if (e.data?.code === 'taken') setMode('signin');
@@ -167,7 +201,7 @@ $('#resendBtn')?.addEventListener('click', async () => {
   if (!lastCreds) {
     setMode('signin');
     show('auth');
-    say($('#authMsg'), t('accResendAgain'));
+    say($('#authMsg'), 'accResendAgain');
     return;
   }
 
@@ -175,10 +209,10 @@ $('#resendBtn')?.addEventListener('click', async () => {
   btn.textContent = t('accSending');
   try {
     const r = await call('/verify/resend', { ...lastCreds, lang: LANG });
-    say(msg, t(r.verified ? 'accAlreadyVerified' : 'accResent'));
+    say(msg, r.verified ? 'accAlreadyVerified' : 'accResent');
     btn.textContent = t('accSent');   // намеренно не включаем обратно
   } catch (e) {
-    say(msg, errText(e), true);
+    sayErr(msg, e);
     btn.disabled = false;
     btn.textContent = t('accResend');
   }
@@ -195,10 +229,10 @@ $('#forgotForm')?.addEventListener('submit', async ev => {
     await call('/password/forgot', { email: $('#forgotEmail').value.trim(), lang: LANG });
     // Ответ сервера одинаков для любого адреса — значит и текст здесь
     // обязан быть одинаковым, иначе форма выдаёт наш список подписчиков.
-    say(msg, t('accForgotSent'));
+    say(msg, 'accForgotSent');
     btn.textContent = t('accSent');
   } catch (e) {
-    say(msg, errText(e), true);
+    sayErr(msg, e);
     btn.disabled = false;
     btn.textContent = t('accForgotSubmit');
   }
@@ -220,7 +254,7 @@ $('#resetForm')?.addEventListener('submit', async ev => {
     history.replaceState(null, '', location.pathname);
     await boot();
   } catch (e) {
-    say(msg, errText(e), true);
+    sayErr(msg, e);
     btn.disabled = false;
     btn.textContent = t('accResetSubmit');
   }
@@ -237,7 +271,7 @@ function paintCabinet(me) {
   $('#accFine').textContent = t(me.until ? 'accFinePaid' : 'accFineFree');
 
   if (!me.verified) {
-    say($('#notifyMsg'), t('accNotifyUnverified'));
+    say($('#notifyMsg'), 'accNotifyUnverified');
   } else {
     $('#notifyMsg').hidden = true;
   }
@@ -248,10 +282,10 @@ $('#notifyBox')?.addEventListener('change', async ev => {
   const on = ev.target.checked;
   try {
     await call('/notify', { on });
-    say($('#notifyMsg'), t(on ? 'accNotifyOn' : 'accNotifyOff'));
+    say($('#notifyMsg'), on ? 'accNotifyOn' : 'accNotifyOff');
   } catch (e) {
     ev.target.checked = !on;      // не сохранилось — галочка не должна врать
-    say($('#notifyMsg'), errText(e), true);
+    sayErr($('#notifyMsg'), e);
   }
 });
 
@@ -273,9 +307,9 @@ $('#changeForm')?.addEventListener('submit', async ev => {
     });
     $('#oldPassword').value = $('#newPassword').value = '';
     $('#changeForm').hidden = true;
-    say(msg, t('accChanged'));
+    say(msg, 'accChanged');
   } catch (e) {
-    say(msg, errText(e), true);
+    sayErr(msg, e);
   } finally {
     btn.disabled = false;
     btn.textContent = t('accSave');
@@ -304,8 +338,8 @@ function toAuth(params) {
   setMode('signin');
   show('auth');
   const v = params.get('verified');
-  if (v === '1') say($('#authMsg'), t('accVerifiedOk'));
-  if (v === '0') say($('#authMsg'), t('accVerifiedFail'), true);
+  if (v === '1') say($('#authMsg'), 'accVerifiedOk');
+  if (v === '0') say($('#authMsg'), 'accVerifiedFail', true);
 }
 
 async function boot() {
@@ -319,7 +353,7 @@ async function boot() {
     const me = await call('/me');
     if (me && me.email) {
       paintCabinet(me);
-      if (params.get('verified') === '1') say($('#notifyMsg'), t('accVerifiedShort'));
+      if (params.get('verified') === '1') say($('#notifyMsg'), 'accVerifiedShort');
     } else {
       toAuth(params);
     }
@@ -332,11 +366,9 @@ async function boot() {
   }
 }
 
-/* Смена языка перерисовывает то, что расставлено разметкой, и заново
-   раскладывает подписи форм. Готовые сообщения на экране при этом остаются
-   на прежнем языке: переписать их нечем — ключа, из которого они получились,
-   уже нет, а гадать по тексту хуже, чем оставить как есть. */
-buildLangPicker(() => { applyLang(); setMode(mode); });
+/* Смена языка перерисовывает всё, что видно: разметку, подписи форм и уже
+   стоящие на экране сообщения — каждое помнит свой ключ. */
+buildLangPicker(() => { applyLang(); setMode(mode); repaintMessages(); });
 applyLang();
 setMode('signin');
 
