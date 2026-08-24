@@ -3,29 +3,9 @@
    ═══════════════════════════════════════════ */
 
 const SVGNS = 'http://www.w3.org/2000/svg';
-const $  = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* Выбор языка при первом заходе.
-   Берём Accept-Language браузера — сигнал, которым управляет сам пользователь.
-   IP-геолокацию не используем сознательно: см. docs/03-stek.md.
-   Явный выбор пользователя всегда старше всего остального. */
-function negotiateLang() {
-  const saved = localStorage.getItem('px.lang');
-  if (saved && I18N[saved]) return saved;
-
-  const available = LANG_ORDER.filter(c => I18N[c]);
-  for (const want of (navigator.languages || [navigator.language || ''])) {
-    const base = want.toLowerCase().split('-')[0];
-    const hit = available.find(c => c === base);
-    if (hit) return hit;
-  }
-  return 'en';   // x-default: нейтральный запасной вариант, а не язык автора
-}
-
-let LANG = negotiateLang();
 
 /* Реестр наполняется асинхронно (live.js), поэтому выбрать вид на этапе
    загрузки скрипта нечем: VIEWS ещё пуст. Раньше здесь стоял VIEWS[0] —
@@ -45,18 +25,8 @@ const dyadColor = k => cssVar(k === 0 ? '--ink' : '--brass');
 
 /* ── утилиты ───────────────────────────── */
 
-/* Недостающий ключ подменяется английским, а не своим же именем: на экране
-   «worldTitle» вместо заголовка выглядит как поломка сайта, а английская
-   строка — просто как непереведённый кусок. Языков шестнадцать, и держать
-   их все в ногу с каждой правкой текста нереально. */
-const t = k => (I18N[LANG] && I18N[LANG][k]) || (I18N.en && I18N.en[k]) || k;
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-/* Локализованное поле: loc(o,'name') → name_ru | name_en, loc(o) → ru | en */
-function loc(o, prefix) {
-  const p = prefix ? prefix + '_' : '';
-  return o[p + LANG] || o[p + 'en'] || o[p + 'ru'] || '';
-}
 const textOf = o => (o.key ? t(o.key) : loc(o));
 
 function zoneOf(v) {
@@ -935,40 +905,6 @@ let topExpanded = false;
    Накал меряет отклонение от нормы, а не тяжесть, и в одиночку ставил войну
    ниже словесного кризиса — просто потому, что война для своей пары привычна,
    а перепалка для своей нет. На вопрос «где хуже» отвечает ступень. */
-/* Трёхбуквенные коды реестра -> двухбуквенные, которые понимает Intl.
-   Таблица нужна ровно одна на все языки: названия стран знает браузер.
-   Косово (XKX) — не код ISO 3166, но Intl его отдаёт, потому что он есть
-   в CLDR как пользовательский; если однажды перестанет — сработает откат
-   на русское имя из витрины. */
-const A3_TO_A2 = {
-  AFG: 'AF', ARM: 'AM', AZE: 'AZ', CHN: 'CN', COD: 'CD', DZA: 'DZ', EGY: 'EG',
-  ERI: 'ER', ETH: 'ET', GRC: 'GR', GUY: 'GY', IND: 'IN', IRN: 'IR', ISR: 'IL',
-  JPN: 'JP', KHM: 'KH', KOR: 'KR', LBN: 'LB', MAR: 'MA', PAK: 'PK', PHL: 'PH',
-  PRK: 'KP', RUS: 'RU', RWA: 'RW', SRB: 'RS', THA: 'TH', TUR: 'TR', TWN: 'TW',
-  UKR: 'UA', USA: 'US', VEN: 'VE', XKX: 'XK', YEM: 'YE',
-};
-
-let _dn = null, _dnLang = null;
-function countryName(a3) {
-  const a2 = A3_TO_A2[a3];
-  if (!a2) return null;
-  try {
-    if (_dnLang !== LANG) {
-      _dn = new Intl.DisplayNames([LANG], { type: 'region' });
-      _dnLang = LANG;
-    }
-    const n = _dn.of(a2);
-    return n && n !== a2 ? n : null;
-  } catch (e) { return null; }
-}
-
-/* Имя пары на языке читателя. Откат на строку из витрины — если кода нет
-   в таблице или браузер не знает страну. */
-function pairName(c) {
-  const a = countryName(c.sideA), b = countryName(c.sideB);
-  return (a && b) ? `${a} — ${b}` : loc(c, 'short');
-}
-
 /* Ось, регион и темп собираются из СЛОВАРЯ по ключу, а не берутся строкой
    из витрины. Пайплайн отдаёт ключ и числа; слова знает только страница,
    потому что их шестнадцать наборов. Русская строка из данных остаётся
@@ -983,40 +919,6 @@ function axisNote(a) {
               strategic: 'axisStrategicNote' }[a.key];
   if (!k) return a.note || '';
   return t(k).replace('{n}', a.n ?? '').replace('{total}', a.total ?? '');
-}
-
-function regionName(c) {
-  const m = (I18N[LANG] && I18N[LANG].regions) || (I18N.en && I18N.en.regions) || {};
-  return m[c.regionKey] || c.region || '';
-}
-
-function disputedName(c) {
-  const m = (I18N[LANG] && I18N[LANG].disputed) || (I18N.en && I18N.en.disputed) || {};
-  return m[c.disputed_key || c.disputedKey] || c.disputed || '';
-}
-
-function tempoTitle(c) {
-  const m = (I18N[LANG] && I18N[LANG].tempos) || (I18N.en && I18N.en.tempos) || {};
-  return m[c.tempo || 'none'] || c.tempoName || '';
-}
-
-/* Название ступени берётся из словаря по НОМЕРУ, а не из данных.
-   Витрина переведена на шестнадцать языков, а пайплайн присылает готовую
-   русскую строку — немец и китаец видели бы кириллицу. Номер ступени
-   язык не имеет. Русская строка из данных остаётся последним запасом:
-   если словарь языка неполон, откат идёт на английский, потом на неё. */
-function phaseTitle(c) {
-  const list = (I18N[LANG] && I18N[LANG].phases) || (I18N.en && I18N.en.phases);
-  return (Array.isArray(list) && list[c.phase]) || c.phaseName || '';
-}
-
-/* Склонение после числа: 1 пара, 2 пары, 5 пар. Для языков без падежей
-   формы совпадают, и правило вырождается само. */
-function plural(n, one, few, many) {
-  const a = Math.abs(n) % 100, b = a % 10;
-  if (a > 10 && a < 20) return many;
-  if (b > 1 && b < 5) return few;
-  return b === 1 ? one : many;
 }
 
 function conflictsByHeat() {
@@ -1159,26 +1061,6 @@ function buildViewPicker() {
   }
 }
 
-function applyLang() {
-  const d = document.documentElement;
-  d.lang = LANG.split('-')[0];
-  d.dir = I18N[LANG]._dir;
-  d.dataset.script = ['zh', 'ja', 'ko'].includes(LANG) ? 'cjk'
-    : ['ar', 'fa'].includes(LANG) ? 'arabic' : 'latin';
-  $$('[data-i18n]').forEach(n => { n.textContent = t(n.dataset.i18n); });
-  document.title = 'brink.watch — ' + t('brandTag');
-}
-
-function buildLangPicker() {
-  const sel = $('#lang');
-  sel.innerHTML = LANG_ORDER.filter(c => I18N[c])
-    .map(c => `<option value="${c}"${c === LANG ? ' selected' : ''}>${I18N[c]._name}</option>`).join('');
-  sel.addEventListener('change', () => {
-    LANG = sel.value;
-    localStorage.setItem('px.lang', LANG);
-    renderAll();
-  });
-}
 
 /* Раздел, которому нечем питаться, скрывается целиком, а не рисуется пустым.
    Пустая рамка с заголовком выглядит как поломка; отсутствующий раздел —
@@ -1192,6 +1074,7 @@ function section(sel, has, paint) {
 function renderAll() {
   if (!VIEW) initView();
   applyLang();
+  document.title = 'brink.watch — ' + t('brandTag');
   buildViewPicker();
 
   paintWorld();
@@ -1300,4 +1183,4 @@ $('#theme').addEventListener('click', () => {
 
 /* Первый renderAll вызывает live.js — после того, как витрина загружена.
    Рисовать до неё нечего: реестр пуст, и стрелка встала бы на ноль. */
-buildLangPicker();
+buildLangPicker(renderAll);

@@ -1,18 +1,18 @@
 <!doctype html>
-<html lang="ru" data-theme="light">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Пара — brink.watch</title>
+<title>brink.watch</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="icon-32.png" sizes="32x32" type="image/png">
-<link rel="stylesheet" href="assets/styles.css?v=37">
+<link rel="stylesheet" href="assets/styles.css?v=38">
 </head>
 <body>
 
 <header class="topbar">
   <div class="wrap topbar__in">
-    <a class="brand" href="/" aria-label="brink.watch — на главную">
+    <a class="brand" href="/" aria-label="brink.watch">
       <svg class="brand__glyph" viewBox="0 0 100 100" fill="none" aria-hidden="true">
         <defs>
           <linearGradient id="bmg" gradientUnits="userSpaceOnUse" x1="34.5" y1="0" x2="75.4" y2="0">
@@ -31,17 +31,27 @@
       </svg>
       <span class="brand__name">brink<span class="brand__dot">·</span>watch</span>
     </a>
+
+    <div class="controls">
+      <div class="langpick">
+        <svg class="langpick__glyph" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M1.6 8h12.8M8 1.6c3.4 3.6 3.4 9.2 0 12.8M8 1.6c-3.4 3.6-3.4 9.2 0 12.8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        </svg>
+        <select id="lang" aria-label="Language"></select>
+      </div>
+    </div>
   </div>
 </header>
 
 <main id="main" class="wrap dpage">
 
-  <p class="dpage__load" id="loading">Загружаем пару…</p>
+  <p class="dpage__load" id="loading" data-i18n="dyadLoading"></p>
 
   <section class="dpage__err" id="failed" hidden>
-    <h1 class="dpage__title">Пара не найдена</h1>
-    <p class="lede" id="failMsg">Такой пары нет в реестре или данные ещё не собраны.</p>
-    <p><a class="btn" href="/">К барометру</a></p>
+    <h1 class="dpage__title" data-i18n="dyadNotFound"></h1>
+    <p class="lede" id="failMsg"></p>
+    <p><a class="btn" href="/" data-i18n="dyadBack"></a></p>
   </section>
 
   <article id="body" hidden>
@@ -53,10 +63,10 @@
       <p class="lede" id="dDisputed"></p>
 
       <div class="dhead__nums">
-        <div class="dnum"><span class="dnum__v num" id="dHeat">—</span><span class="dnum__k">накал</span></div>
-        <div class="dnum"><span class="dnum__v" id="dPhase">—</span><span class="dnum__k">ступень</span></div>
-        <div class="dnum"><span class="dnum__v" id="dTempo">—</span><span class="dnum__k">темп</span></div>
-        <div class="dnum"><span class="dnum__v num" id="dCov">—</span><span class="dnum__k">покрытие данными</span></div>
+        <div class="dnum"><span class="dnum__v num" id="dHeat">—</span><span class="dnum__k" data-i18n="kHeat"></span></div>
+        <div class="dnum"><span class="dnum__v" id="dPhase">—</span><span class="dnum__k" data-i18n="kPhase"></span></div>
+        <div class="dnum"><span class="dnum__v" id="dTempo">—</span><span class="dnum__k" data-i18n="kTempo"></span></div>
+        <div class="dnum"><span class="dnum__v num" id="dCov">—</span><span class="dnum__k" data-i18n="kCoverage"></span></div>
       </div>
 
       <p class="dpage__note" id="dBasis"></p>
@@ -64,29 +74,29 @@
 
     <!-- Главное на этой странице: из чего сложился накал и чего не измерено. -->
     <section class="dsec">
-      <h2 class="h2">Из чего сложился накал</h2>
+      <h2 class="h2" data-i18n="dyadBlocksTitle"></h2>
       <p class="lede" id="blocksLede"></p>
       <div id="blocks"></div>
-      <p class="dpage__note">Веса блоков в сумме дают единицу только когда измерены все пять. Неизмеренный блок не заменяется нулём и не перенормируется: ноль означал бы «проверили, там пусто», а правда в том, что этим источником пара не меряется совсем.</p>
+      <p class="dpage__note" data-i18n="dyadBlocksNote"></p>
     </section>
 
     <!-- История фаз: что система утверждала и на каком основании. -->
     <section class="dsec" id="histSec">
-      <h2 class="h2">История ступеней</h2>
-      <p class="lede">Каждая запись — то, что система утверждала в тот день, с правилом, по которому это решено. Записи только добавляются: исправление ошибки — новая строка, а не правка старой.</p>
+      <h2 class="h2" data-i18n="dyadHistTitle"></h2>
+      <p class="lede" data-i18n="dyadHistLede"></p>
       <ol class="hist" id="hist"></ol>
     </section>
 
     <!-- Раскрытие до исходного события. -->
     <section class="dsec" id="evSec">
-      <h2 class="h2">Исходные события</h2>
+      <h2 class="h2" data-i18n="dyadEvTitle"></h2>
       <p class="lede" id="evLede"></p>
       <div class="evwrap"><table class="ev" id="ev"></table></div>
-      <p class="dpage__note">Это сырые записи источников без нашей обработки — ровно то, из чего считаются индикаторы. Коды CAMEO проставлены автоматикой GDELT и, по нашей же проверке, ошибаются примерно в трети случаев; ссылка ведёт на статью, чтобы это можно было увидеть самому.</p>
+      <p class="dpage__note" data-i18n="dyadEvNote"></p>
     </section>
 
     <div class="dpage__foot">
-      <a class="btn" href="/">К барометру</a>
+      <a class="btn" href="/" data-i18n="dyadBack"></a>
       <span class="dpage__stamp" id="stamp"></span>
     </div>
 
@@ -96,14 +106,19 @@
 <footer class="foot">
   <div class="wrap foot__in">
     <p class="foot__legal">© 2026 brink.watch
-      <span class="sep">·</span> <a href="privacy.html">Политика конфиденциальности</a>
-      <span class="sep">·</span> <a href="terms.html">Условия использования</a>
+      <span class="sep">·</span> <a href="privacy.html" data-i18n="footPrivacy"></a>
+      <span class="sep">·</span> <a href="terms.html" data-i18n="footTerms"></a>
       <span class="sep">·</span> <a href="mailto:support@brink.watch">support@brink.watch</a>
     </p>
   </div>
 </footer>
 
-<script src="assets/arc.js?v=37"></script>
-<script src="assets/dyad.js?v=37"></script>
+<script src="assets/i18n.js?v=38"></script>
+<script src="assets/lang/eu.js?v=38"></script>
+<script src="assets/lang/asia.js?v=38"></script>
+<script src="assets/lang/rtl.js?v=38"></script>
+<script src="assets/lang.js?v=38"></script>
+<script src="assets/arc.js?v=38"></script>
+<script src="assets/dyad.js?v=38"></script>
 </body>
 </html>
