@@ -80,10 +80,17 @@ function normalize(p) {
  */
 export function checkPasswordPolicy(password) {
   const p = normalize(password);
-  if (p.length < MIN_PASSWORD) return `пароль короче ${MIN_PASSWORD} символов`;
-  if (p.length > MAX_PASSWORD) return `пароль длиннее ${MAX_PASSWORD} символов`;
-  if (COMMON.has(p.toLowerCase())) return 'слишком распространённый пароль';
-  if (new Set(p).size < 4) return 'слишком мало разных символов';
+  // Возвращается ПАРА: ключ для интерфейса и русская фраза запасом. Раньше
+  // отсюда уходила только фраза, и кабинет на любом языке показывал её
+  // кириллицей. Ключ — единственное, что можно перевести на стороне читателя.
+  if (p.length < MIN_PASSWORD)
+    return { key: 'pwShort', reason: `пароль короче ${MIN_PASSWORD} символов`, n: MIN_PASSWORD };
+  if (p.length > MAX_PASSWORD)
+    return { key: 'pwLong', reason: `пароль длиннее ${MAX_PASSWORD} символов`, n: MAX_PASSWORD };
+  if (COMMON.has(p.toLowerCase()))
+    return { key: 'pwCommon', reason: 'слишком распространённый пароль' };
+  if (new Set(p).size < 4)
+    return { key: 'pwPoor', reason: 'слишком мало разных символов' };
   return null;
 }
 

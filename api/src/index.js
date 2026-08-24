@@ -88,12 +88,12 @@ export default {
         case 'POST /api/verify/resend':   return await resendVerify(req, env, now, h);
         case 'GET /api/data':             return await data(req, env, now, h);
         case 'POST /api/webhook':         return await webhook(req, env, now);
-        default: return json({ error: 'не найдено' }, 404, h);
+        default: return json({ error: 'не найдено', key: 'notFound' }, 404, h);
       }
     } catch (e) {
       // Наружу — без подробностей: текст ошибки может содержать внутренние детали.
       console.error('api error', e?.stack || e);
-      return json({ error: 'внутренняя ошибка' }, 500, h);
+      return json({ error: 'внутренняя ошибка', key: 'server' }, 500, h);
     }
   },
 };
@@ -105,12 +105,12 @@ const withSession = (body, session, h) =>
 /* ------------------------------------------------------------ аккаунт */
 
 async function register(req, env, now, h) {
-  const { email, password } = await req.json().catch(() => ({}));
+  const { email, password, lang } = await req.json().catch(() => ({}));
   const r = await registerUser(
     env.DB, { email, password, pepper: pepper(env), requireVerified: mustVerify(env) }, now);
-  if (!r.ok) return json({ error: r.reason, code: r.code }, r.code === 'taken' ? 409 : 400, h);
+  if (!r.ok) return json({ error: r.reason, code: r.code, key: r.key }, r.code === 'taken' ? 409 : 400, h);
 
-  await sendVerify(env, r.email, now);
+  await sendVerify(env, r.email, now, lang);
 
   // Подтверждение обязательно — сессию не выдаём. Пустить человека в кабинет
   // и следующим экраном сказать «а теперь подтвердите» значит сделать
@@ -126,7 +126,7 @@ async function signin(req, env, now, h) {
   if (r.ok) return withSession({ ok: true, email: r.email }, r.session, h);
 
   const status = r.code === 'throttled' ? 429 : r.code === 'unverified' ? 403 : 401;
-  return json({ error: r.reason, code: r.code }, status, h);
+  return json({ error: r.reason, code: r.code, key: r.key }, status, h);
 }
 
 /**
@@ -139,12 +139,12 @@ async function signin(req, env, now, h) {
  * неразличимость «неверный пароль» и «нет такого адреса».
  */
 async function resendVerify(req, env, now, h) {
-  const { email, password } = await req.json().catch(() => ({}));
+  const { email, password, lang } = await req.json().catch(() => ({}));
   const r = await signIn(env.DB, { email, password, pepper: pepper(env),
                                    ip: clientIp(req), requireVerified: true }, now);
 
-  if (r.code === 'throttled') return json({ error: r.reason, code: r.code }, 429, h);
-  if (!r.ok && r.code !== 'unverified') return json({ error: r.reason, code: r.code }, 401, h);
+  if (r.code === 'throttled') return json({ error: r.reason, code: r.code, key: r.key }, 429, h);
+  if (!r.ok && r.code !== 'unverified') return json({ error: r.reason, code: r.code, key: r.key }, 401, h);
 
   // Уже подтверждён — письма не шлём, но и отказом это не является:
   // человеку надо просто войти. Сессию, которую завёл signIn, здесь гасим:
@@ -154,7 +154,7 @@ async function resendVerify(req, env, now, h) {
     return json({ ok: true, verified: true }, 200, h);
   }
 
-  await sendVerify(env, r.email, now);
+  await sendVerify(env, r.email, now, lang);
   return json({ ok: true, verified: false }, 200, h);
 }
 
@@ -172,16 +172,14 @@ async function logout(req, env, h) {
  * не ломает. Кому надо, письмо придёт.
  */
 async function forgot(req, env, now, h) {
-  const { email } = await req.json().catch(() => ({}));
+  const { email, lang } = await req.json().catch(() => ({}));
   const e = normalizeEmail(email);
 
   if (looksLikeEmail(e) && await getUser(env.DB, e)) {
     const token = await createLink(env.DB, e, 'reset', now);
     const link = `${env.SITE_URL}/account.html?reset=${token}`;
-    await sendMail(env, e, 'Смена пароля в brink.watch',
-      `Чтобы задать новый пароль, откройте ссылку. Она действует ${RESET_TTL_SEC / 60} минут ` +
-      `и срабатывает один раз:\n\n${link}\n\n` +
-      `Если пароль вы не забывали — письмо можно не читать, старый продолжает работать.`);
+    const m = MAIL.reset[mailLang(lang)](link, RESET_TTL_SEC / 60);
+    await sendMail(env, e, m.subject, m.text);
   }
   return json({ ok: true }, 200, h);
 }
@@ -189,18 +187,18 @@ async function forgot(req, env, now, h) {
 async function resetPass(req, env, now, h) {
   const { token, password } = await req.json().catch(() => ({}));
   const r = await resetPassword(env.DB, { token, newPassword: password, pepper: pepper(env) }, now);
-  if (!r.ok) return json({ error: r.reason, code: r.code }, 400, h);
+  if (!r.ok) return json({ error: r.reason, code: r.code, key: r.key }, 400, h);
   return withSession({ ok: true, email: r.email }, r.session, h);
 }
 
 async function changePass(req, env, now, h) {
   const email = await whoami(env.DB, readCookie(req, 'escx_session'), now);
-  if (!email) return json({ error: 'нужно войти' }, 401, h);
+  if (!email) return json({ error: 'нужно войти', key: 'signInRequired' }, 401, h);
 
   const { old_password, password } = await req.json().catch(() => ({}));
   const r = await changePassword(
     env.DB, { email, oldPassword: old_password, newPassword: password, pepper: pepper(env) }, now);
-  if (!r.ok) return json({ error: r.reason, code: r.code }, 400, h);
+  if (!r.ok) return json({ error: r.reason, code: r.code, key: r.key }, 400, h);
 
   // Старые сессии убиты, включая текущую, — выдаём новую, иначе человек
   // окажется выкинут из кабинета сразу после успешной смены пароля.
@@ -220,7 +218,7 @@ async function verify(url, env, now) {
 
 async function notify(req, env, now, h) {
   const email = await whoami(env.DB, readCookie(req, 'escx_session'), now);
-  if (!email) return json({ error: 'нужно войти' }, 401, h);
+  if (!email) return json({ error: 'нужно войти', key: 'signInRequired' }, 401, h);
   const { on } = await req.json().catch(() => ({}));
   await setNotify(env.DB, email, !!on);
   return json({ ok: true, notify: !!on }, 200, h);
@@ -246,7 +244,7 @@ async function data(req, env, now, h) {
   // Полная витрина лежит рядом со статикой. Worker её только фильтрует —
   // так закрытая часть не попадает в бесплатную выдачу даже теоретически.
   const res = await fetch(`${env.SITE_URL}/data/index.json`, { cf: { cacheTtl: 300 } });
-  if (!res.ok) return json({ error: 'данные недоступны' }, 503, h);
+  if (!res.ok) return json({ error: 'данные недоступны', key: 'unavailable' }, 503, h);
 
   return json(applyLimits(await res.json(), plan, now), 200, {
     ...h, 'cache-control': 'private, max-age=60',
@@ -297,16 +295,65 @@ async function webhook(req, env, now) {
   return json({ ok: true });
 }
 
-/* ----------------------------------------------------------------- почта */
+/* ----------------------------------------------------------------- почта
 
-async function sendVerify(env, email, now) {
+   Письма пишутся на языке того, кто их вызвал: кабинет переведён, а письмо
+   приходило кириллицей всем. Язык присылает сама страница в теле запроса —
+   в базе его хранить незачем: оба письма отправляются в ответ на действие,
+   которое человек совершает прямо сейчас, глядя в свой интерфейс.
+
+   Редакции две, русская и английская. Писать служебное письмо на языке,
+   который мы не вычитывали, хуже, чем прислать понятный английский, —
+   поэтому всё, что не русское, получает английское. */
+
+// Языка нет вовсе — значит запрос пришёл от страницы, загруженной до этой
+// правки. Такая страница русская, и присылать ей английское письмо было бы
+// сменой поведения на ровном месте. Поэтому пусто = ru, и только явный
+// не-русский язык переключает письмо на английское.
+const mailLang = v => {
+  const l = String(v || '').toLowerCase().split('-')[0];
+  return !l || l === 'ru' ? 'ru' : 'en';
+};
+
+const MAIL = {
+  verify: {
+    ru: (link, hours) => ({
+      subject: 'Подтверждение адреса в brink.watch',
+      text: `Вы завели кабинет на brink.watch. Чтобы войти, подтвердите адрес — `
+        + `откройте ссылку, она действует ${hours} часа:\n\n${link}\n\n`
+        + `Если это были не вы, просто удалите письмо: без пароля в аккаунт не войти, `
+        + `а неподтверждённый аккаунт ничего не открывает.`,
+    }),
+    en: (link, hours) => ({
+      subject: 'Confirm your address on brink.watch',
+      text: `You have opened an account on brink.watch. To sign in, confirm your address — `
+        + `open the link below; it is valid for ${hours} hours:\n\n${link}\n\n`
+        + `If this was not you, simply delete this message: without the password no one `
+        + `can get into the account, and an unconfirmed account opens nothing.`,
+    }),
+  },
+  reset: {
+    ru: (link, minutes) => ({
+      subject: 'Смена пароля в brink.watch',
+      text: `Чтобы задать новый пароль, откройте ссылку. Она действует ${minutes} минут `
+        + `и срабатывает один раз:\n\n${link}\n\n`
+        + `Если пароль вы не забывали — письмо можно не читать, старый продолжает работать.`,
+    }),
+    en: (link, minutes) => ({
+      subject: 'Password reset on brink.watch',
+      text: `To set a new password, open the link below. It is valid for ${minutes} minutes `
+        + `and works once:\n\n${link}\n\n`
+        + `If you did not forget your password, you can ignore this message — the old one `
+        + `keeps working.`,
+    }),
+  },
+};
+
+async function sendVerify(env, email, now, lang) {
   const token = await createLink(env.DB, email, 'verify', now);
-  await sendMail(env, email, 'Подтверждение адреса в brink.watch',
-    `Вы завели кабинет на brink.watch. Чтобы войти, подтвердите адрес — ` +
-    `откройте ссылку, она действует ${VERIFY_TTL_SEC / 3600} часа:\n\n` +
-    `${env.SITE_URL}/api/verify?token=${token}\n\n` +
-    `Если это были не вы, просто удалите письмо: без пароля в аккаунт не войти, ` +
-    `а неподтверждённый аккаунт ничего не открывает.`);
+  const link = `${env.SITE_URL}/api/verify?token=${token}`;
+  const m = MAIL.verify[mailLang(lang)](link, VERIFY_TTL_SEC / 3600);
+  await sendMail(env, email, m.subject, m.text);
 }
 
 async function sendMail(env, to, subject, text) {

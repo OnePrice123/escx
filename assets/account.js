@@ -6,14 +6,18 @@
    выглядеть как ошибка пользователя — если служба входа молчит, так и
    написано, а не «неверный адрес».
 
-   Второе правило, из-за которого код выглядит так: текст отказа при входе
-   берётся с сервера как есть и НЕ уточняется на клиенте. Сервер отвечает
-   одинаково на неверный пароль и на незнакомый адрес; если здесь дописать
-   «проверьте, зарегистрированы ли вы», вся эта осторожность пропадёт зря.
+   Второе правило, из-за которого код выглядит так: причина отказа при входе
+   берётся с сервера и НЕ уточняется на клиенте. Сервер отвечает одинаково на
+   неверный пароль и на незнакомый адрес; если здесь дописать «проверьте,
+   зарегистрированы ли вы», вся эта осторожность пропадёт зря.
+
+   Приходит она КЛЮЧОМ. Раньше сервер присылал готовую русскую фразу, и
+   кабинет показывал её кириллицей на любом языке. Теперь фраза тоже
+   приходит — в поле error, — но она запасная: на экран идёт перевод по
+   ключу, а сама фраза только если ключа в словаре нет.
    ═══════════════════════════════════════════════════════════ */
 
 const API = '/api';
-const $ = s => document.querySelector(s);
 const SCREENS = ['auth', 'pending', 'forgot', 'reset', 'cabinet', 'loading', 'offline'];
 
 /* Адрес и пароль последней попытки. Нужны ровно для одной кнопки — «выслать
@@ -35,13 +39,16 @@ function say(node, text, bad = false) {
   node.classList.toggle('acc__msg--bad', bad);
 }
 
-const PLAN_NAME = { free: 'Бесплатный', pro: 'Pro', team: 'Team', api: 'API', trial: 'Пробный' };
-
-function fmtDate(s) {
-  if (!s) return '—';
-  const d = new Date(String(s).replace(' ', 'T'));
-  if (isNaN(d)) return String(s);
-  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+/* Текст отказа: сперва перевод по ключу, потом — фраза сервера.
+ * Порядок именно такой. Если однажды сервер вернёт ключ, которого здесь нет,
+ * человек увидит русскую фразу вместо пустого места — это плохо, но честно,
+ * а пустое сообщение об ошибке означало бы, что всё в порядке. */
+function errText(e) {
+  if (e.offline) return t('accNetDown');
+  const key = e.data?.key;
+  const m = (I18N[LANG] && I18N[LANG].accErrors) || (I18N.en && I18N.en.accErrors) || {};
+  const s = key && m[key];
+  return s ? s.replace('{n}', e.data?.n ?? '') : (e.message || t('accNetDown'));
 }
 
 /**
@@ -62,14 +69,12 @@ async function call(path, body) {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (e) {
-    throw Object.assign(new Error('нет связи'), { offline: true });
+    throw Object.assign(new Error('offline'), { offline: true });
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error || `ошибка ${res.status}`), { data });
+  if (!res.ok) throw Object.assign(new Error(data.error || `HTTP ${res.status}`), { data });
   return data;
 }
-
-const NET_DOWN = 'Служба входа не ответила. Попробуйте позже — барометр работает и без неё.';
 
 /* ------------------------------------------------------- вход и регистрация */
 
@@ -78,12 +83,10 @@ let mode = 'signin';   // signin | register
 function setMode(next) {
   mode = next;
   const reg = mode === 'register';
-  $('#authTitle').textContent = reg ? 'Регистрация' : 'Вход';
-  $('#authLede').textContent = reg
-    ? 'Адрес почты и пароль. На этот адрес мы пришлём подтверждение и уведомления, если вы их включите.'
-    : 'Адрес почты и пароль. Тот же адрес получит уведомления, если вы их включите.';
-  $('#authBtn').textContent = reg ? 'Зарегистрироваться' : 'Войти';
-  $('#modeBtn').textContent = reg ? 'Уже есть аккаунт — войти' : 'Нет аккаунта — зарегистрироваться';
+  $('#authTitle').textContent = t(reg ? 'accRegister' : 'accSignIn');
+  $('#authLede').textContent = t(reg ? 'accLedeRegister' : 'accLedeSignIn');
+  $('#authBtn').textContent = t(reg ? 'accRegisterBtn' : 'accSignInBtn');
+  $('#modeBtn').textContent = t(reg ? 'accToSignIn' : 'accToRegister');
   // autocomplete подсказывает браузеру, предлагать сохранённый пароль или
   // придумать новый. Без переключения менеджер паролей подставляет старый
   // в поле, где ждут новый.
@@ -113,15 +116,16 @@ $('#authForm')?.addEventListener('submit', async ev => {
   const label = btn.textContent;
 
   if (password.length < 10 && mode === 'register') {
-    say(msg, 'Пароль короче 10 символов.', true);
+    say(msg, t('accPwShortLocal'), true);
     return;
   }
 
   btn.disabled = true;
-  btn.textContent = mode === 'register' ? 'Создаём…' : 'Входим…';
+  btn.textContent = t(mode === 'register' ? 'accCreating' : 'accSigningIn');
   msg.hidden = true;
   try {
-    const r = await call(mode === 'register' ? '/register' : '/signin', { email, password });
+    const r = await call(mode === 'register' ? '/register' : '/signin',
+                         { email, password, lang: LANG });
     $('#password').value = '';
     // Регистрация прошла, но сессии нет: адрес ждёт подтверждения.
     if (r.pending) { toPending(email, password); return; }
@@ -132,7 +136,7 @@ $('#authForm')?.addEventListener('submit', async ev => {
     // заново, незачем.
     if (e.data?.code === 'unverified') { toPending(email, password); return; }
 
-    say(msg, e.offline ? NET_DOWN : e.message, true);
+    say(msg, errText(e), true);
     // Занятый адрес при регистрации — единственный случай, когда полезно
     // подсказать действие: человек уже зарегистрирован и просто забыл.
     if (e.data?.code === 'taken') setMode('signin');
@@ -149,7 +153,7 @@ function toPending(email, password) {
   $('#pendingMsg').hidden = true;
   const btn = $('#authBtn');           // форма входа осталась с «Создаём…»
   btn.disabled = false;
-  btn.textContent = mode === 'register' ? 'Зарегистрироваться' : 'Войти';
+  btn.textContent = t(mode === 'register' ? 'accRegisterBtn' : 'accSignInBtn');
   show('pending');
 }
 
@@ -163,22 +167,20 @@ $('#resendBtn')?.addEventListener('click', async () => {
   if (!lastCreds) {
     setMode('signin');
     show('auth');
-    say($('#authMsg'), 'Введите адрес и пароль ещё раз — после этого сможем выслать письмо повторно.');
+    say($('#authMsg'), t('accResendAgain'));
     return;
   }
 
   btn.disabled = true;
-  btn.textContent = 'Отправляем…';
+  btn.textContent = t('accSending');
   try {
-    const r = await call('/verify/resend', lastCreds);
-    say(msg, r.verified
-      ? 'Этот адрес уже подтверждён — можно входить.'
-      : 'Письмо отправлено ещё раз. Проверьте почту, в том числе папку со спамом.');
-    btn.textContent = 'Отправлено';   // намеренно не включаем обратно
+    const r = await call('/verify/resend', { ...lastCreds, lang: LANG });
+    say(msg, t(r.verified ? 'accAlreadyVerified' : 'accResent'));
+    btn.textContent = t('accSent');   // намеренно не включаем обратно
   } catch (e) {
-    say(msg, e.offline ? NET_DOWN : e.message, true);
+    say(msg, errText(e), true);
     btn.disabled = false;
-    btn.textContent = 'Выслать письмо ещё раз';
+    btn.textContent = t('accResend');
   }
 });
 
@@ -188,17 +190,17 @@ $('#forgotForm')?.addEventListener('submit', async ev => {
   ev.preventDefault();
   const btn = $('#forgotSubmit'), msg = $('#forgotMsg');
   btn.disabled = true;
-  btn.textContent = 'Отправляем…';
+  btn.textContent = t('accSending');
   try {
-    await call('/password/forgot', { email: $('#forgotEmail').value.trim() });
+    await call('/password/forgot', { email: $('#forgotEmail').value.trim(), lang: LANG });
     // Ответ сервера одинаков для любого адреса — значит и текст здесь
     // обязан быть одинаковым, иначе форма выдаёт наш список подписчиков.
-    say(msg, 'Если такой адрес у нас есть, письмо со ссылкой уже отправлено. Проверьте почту, в том числе папку со спамом.');
-    btn.textContent = 'Отправлено';
+    say(msg, t('accForgotSent'));
+    btn.textContent = t('accSent');
   } catch (e) {
-    say(msg, e.offline ? NET_DOWN : e.message, true);
+    say(msg, errText(e), true);
     btn.disabled = false;
-    btn.textContent = 'Прислать ссылку';
+    btn.textContent = t('accForgotSubmit');
   }
 });
 
@@ -209,7 +211,7 @@ $('#resetForm')?.addEventListener('submit', async ev => {
   const token = new URL(location.href).searchParams.get('reset');
   const btn = $('#resetSubmit'), msg = $('#resetMsg');
   btn.disabled = true;
-  btn.textContent = 'Сохраняем…';
+  btn.textContent = t('accSaving');
   try {
     await call('/password/reset', { token, password: $('#resetPassword').value });
     $('#resetPassword').value = '';
@@ -218,9 +220,9 @@ $('#resetForm')?.addEventListener('submit', async ev => {
     history.replaceState(null, '', location.pathname);
     await boot();
   } catch (e) {
-    say(msg, e.offline ? NET_DOWN : e.message, true);
+    say(msg, errText(e), true);
     btn.disabled = false;
-    btn.textContent = 'Сохранить пароль';
+    btn.textContent = t('accResetSubmit');
   }
 });
 
@@ -228,16 +230,14 @@ $('#resetForm')?.addEventListener('submit', async ev => {
 
 function paintCabinet(me) {
   $('#accEmail').textContent = me.email || '—';
-  $('#accPlan').textContent = PLAN_NAME[me.plan] || me.plan || '—';
-  $('#accUntil').textContent = me.until ? fmtDate(me.until) : 'нет активной подписки';
-  $('#accVerified').textContent = me.verified ? 'да' : 'нет';
+  $('#accPlan').textContent = t2('plans', me.plan, me.plan) || '—';
+  $('#accUntil').textContent = me.until ? fmtDay(me.until) : t('accNoSub');
+  $('#accVerified').textContent = t(me.verified ? 'accYes' : 'accNo');
   $('#notifyBox').checked = !!me.notify;
-  $('#accFine').textContent = me.until
-    ? 'Продление и отмена — на стороне платёжной системы.'
-    : 'Открытая часть барометра доступна без подписки и остаётся бесплатной.';
+  $('#accFine').textContent = t(me.until ? 'accFinePaid' : 'accFineFree');
 
   if (!me.verified) {
-    say($('#notifyMsg'), 'Адрес пока не подтверждён. Уведомления придут только на подтверждённый адрес — ссылка была в письме после регистрации.');
+    say($('#notifyMsg'), t('accNotifyUnverified'));
   } else {
     $('#notifyMsg').hidden = true;
   }
@@ -248,10 +248,10 @@ $('#notifyBox')?.addEventListener('change', async ev => {
   const on = ev.target.checked;
   try {
     await call('/notify', { on });
-    say($('#notifyMsg'), on ? 'Уведомления включены.' : 'Уведомления отключены.');
+    say($('#notifyMsg'), t(on ? 'accNotifyOn' : 'accNotifyOff'));
   } catch (e) {
     ev.target.checked = !on;      // не сохранилось — галочка не должна врать
-    say($('#notifyMsg'), e.offline ? NET_DOWN : e.message, true);
+    say($('#notifyMsg'), errText(e), true);
   }
 });
 
@@ -265,7 +265,7 @@ $('#changeForm')?.addEventListener('submit', async ev => {
   ev.preventDefault();
   const btn = $('#changeSubmit'), msg = $('#changeMsg');
   btn.disabled = true;
-  btn.textContent = 'Сохраняем…';
+  btn.textContent = t('accSaving');
   try {
     await call('/password/change', {
       old_password: $('#oldPassword').value,
@@ -273,12 +273,12 @@ $('#changeForm')?.addEventListener('submit', async ev => {
     });
     $('#oldPassword').value = $('#newPassword').value = '';
     $('#changeForm').hidden = true;
-    say(msg, 'Пароль изменён. Входы на других устройствах закрыты.');
+    say(msg, t('accChanged'));
   } catch (e) {
-    say(msg, e.offline ? NET_DOWN : e.message, true);
+    say(msg, errText(e), true);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Сохранить';
+    btn.textContent = t('accSave');
   }
 });
 
@@ -304,8 +304,8 @@ function toAuth(params) {
   setMode('signin');
   show('auth');
   const v = params.get('verified');
-  if (v === '1') say($('#authMsg'), 'Адрес подтверждён. Теперь можно войти.');
-  if (v === '0') say($('#authMsg'), 'Ссылка не сработала: она действует сутки и срабатывает один раз. Введите адрес и пароль — предложим выслать письмо заново.', true);
+  if (v === '1') say($('#authMsg'), t('accVerifiedOk'));
+  if (v === '0') say($('#authMsg'), t('accVerifiedFail'), true);
 }
 
 async function boot() {
@@ -319,7 +319,7 @@ async function boot() {
     const me = await call('/me');
     if (me && me.email) {
       paintCabinet(me);
-      if (params.get('verified') === '1') say($('#notifyMsg'), 'Адрес подтверждён.');
+      if (params.get('verified') === '1') say($('#notifyMsg'), t('accVerifiedShort'));
     } else {
       toAuth(params);
     }
@@ -331,6 +331,14 @@ async function boot() {
     else toAuth(params);
   }
 }
+
+/* Смена языка перерисовывает то, что расставлено разметкой, и заново
+   раскладывает подписи форм. Готовые сообщения на экране при этом остаются
+   на прежнем языке: переписать их нечем — ключа, из которого они получились,
+   уже нет, а гадать по тексту хуже, чем оставить как есть. */
+buildLangPicker(() => { applyLang(); setMode(mode); });
+applyLang();
+setMode('signin');
 
 show('loading');
 boot();

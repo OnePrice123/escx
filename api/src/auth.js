@@ -132,17 +132,19 @@ export async function getUser(db, email) {
  */
 export async function registerUser(db, { email, password, pepper = '', requireVerified = false }, nowSec) {
   const e = normalizeEmail(email);
-  if (!looksLikeEmail(e)) return { ok: false, code: 'email', reason: 'некорректный адрес' };
+  if (!looksLikeEmail(e))
+    return { ok: false, code: 'email', key: 'badEmail', reason: 'некорректный адрес' };
 
   const bad = checkPasswordPolicy(password);
-  if (bad) return { ok: false, code: 'password', reason: bad };
+  if (bad) return { ok: false, code: 'password', ...bad };
 
   // Пароль, равный собственному адресу, формально проходит политику по длине.
   if (String(password).trim().toLowerCase() === e)
-    return { ok: false, code: 'password', reason: 'пароль не должен совпадать с адресом' };
+    return { ok: false, code: 'password', key: 'pwIsEmail',
+             reason: 'пароль не должен совпадать с адресом' };
 
   if (await getUser(db, e))
-    return { ok: false, code: 'taken', reason: 'адрес уже зарегистрирован' };
+    return { ok: false, code: 'taken', key: 'taken', reason: 'адрес уже зарегистрирован' };
 
   await db.prepare(
     `INSERT INTO users (email, pass_hash, created_at, updated_at)
@@ -165,7 +167,8 @@ export async function signIn(db, { email, password, pepper = '', ip = '', requir
   const scopes = ip ? [`email:${e}`, `ip:${ip}`] : [`email:${e}`];
 
   if (await tooManyFails(db, scopes, nowSec))
-    return { ok: false, code: 'throttled', reason: 'слишком много попыток, попробуйте через 15 минут' };
+    return { ok: false, code: 'throttled', key: 'throttled',
+             reason: 'слишком много попыток, попробуйте через 15 минут' };
 
   const user = await getUser(db, e);
 
@@ -174,13 +177,13 @@ export async function signIn(db, { email, password, pepper = '', ip = '', requir
   if (!user || !user.pass_hash) {
     await burnTime(pepper);
     await noteFail(db, scopes, nowSec);
-    return { ok: false, code: 'bad', reason: 'адрес или пароль не подходят' };
+    return { ok: false, code: 'bad', key: 'badCreds', reason: 'адрес или пароль не подходят' };
   }
 
   const { ok, needsRehash } = await verifyPassword(user.pass_hash, password, pepper);
   if (!ok) {
     await noteFail(db, scopes, nowSec);
-    return { ok: false, code: 'bad', reason: 'адрес или пароль не подходят' };
+    return { ok: false, code: 'bad', key: 'badCreds', reason: 'адрес или пароль не подходят' };
   }
 
   // Параметры хэширования устарели (подняли итерации или завели перец) —
@@ -195,7 +198,7 @@ export async function signIn(db, { email, password, pepper = '', ip = '', requir
   // возвращается: интерфейсу нужно предложить выслать письмо заново, а тайны
   // здесь уже нет — пароль человек знает, то есть аккаунт его.
   if (requireVerified && !user.verified_at)
-    return { ok: false, code: 'unverified', email: e,
+    return { ok: false, code: 'unverified', key: 'unverified', email: e,
              reason: 'адрес не подтверждён — откройте ссылку из письма' };
 
   return { ok: true, email: e, session: await createSession(db, e, nowSec) };
@@ -205,13 +208,14 @@ export async function signIn(db, { email, password, pepper = '', ip = '', requir
 export async function changePassword(db, { email, oldPassword, newPassword, pepper = '' }, nowSec) {
   const e = normalizeEmail(email);
   const user = await getUser(db, e);
-  if (!user || !user.pass_hash) return { ok: false, code: 'bad', reason: 'пароль не задан' };
+  if (!user || !user.pass_hash)
+    return { ok: false, code: 'bad', key: 'noPassword', reason: 'пароль не задан' };
 
   const { ok } = await verifyPassword(user.pass_hash, oldPassword, pepper);
-  if (!ok) return { ok: false, code: 'bad', reason: 'текущий пароль не подходит' };
+  if (!ok) return { ok: false, code: 'bad', key: 'badOldPw', reason: 'текущий пароль не подходит' };
 
   const bad = checkPasswordPolicy(newPassword);
-  if (bad) return { ok: false, code: 'password', reason: bad };
+  if (bad) return { ok: false, code: 'password', ...bad };
 
   await setPassword(db, e, newPassword, pepper);
   await destroyAllSessions(db, e);
@@ -248,10 +252,12 @@ export async function consumeLink(db, token, purpose, nowSec) {
     'SELECT email, purpose, expires_at, used FROM magic_links WHERE token_hash = ?'
   ).bind(hash).first();
 
-  if (!row) return { ok: false, reason: 'ссылка не найдена' };
-  if (row.used) return { ok: false, reason: 'ссылка уже использована' };
-  if (row.purpose !== purpose) return { ok: false, reason: 'ссылка не для этого действия' };
-  if (row.expires_at < nowSec) return { ok: false, reason: 'срок ссылки истёк' };
+  if (!row) return { ok: false, key: 'linkUnknown', reason: 'ссылка не найдена' };
+  if (row.used) return { ok: false, key: 'linkUsed', reason: 'ссылка уже использована' };
+  if (row.purpose !== purpose)
+    return { ok: false, key: 'linkWrong', reason: 'ссылка не для этого действия' };
+  if (row.expires_at < nowSec)
+    return { ok: false, key: 'linkExpired', reason: 'срок ссылки истёк' };
 
   await db.prepare('UPDATE magic_links SET used = 1 WHERE token_hash = ?').bind(hash).run();
   return { ok: true, email: row.email };
@@ -263,10 +269,10 @@ export async function consumeLink(db, token, purpose, nowSec) {
  */
 export async function resetPassword(db, { token, newPassword, pepper = '' }, nowSec) {
   const bad = checkPasswordPolicy(newPassword);
-  if (bad) return { ok: false, code: 'password', reason: bad };
+  if (bad) return { ok: false, code: 'password', ...bad };
 
   const r = await consumeLink(db, token, 'reset', nowSec);
-  if (!r.ok) return { ok: false, code: 'link', reason: r.reason };
+  if (!r.ok) return { ok: false, code: 'link', key: r.key, reason: r.reason };
 
   await setPassword(db, r.email, newPassword, pepper);
   await markVerified(db, r.email);
